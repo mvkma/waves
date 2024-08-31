@@ -39,4 +39,27 @@ function createProgram(gl, vertexShader, fragmentShader) {
     return prog;
 }
 
-export { compileShader, createProgram };
+/**
+ * @param {Float32Array} vec
+ *
+ * @return number
+ */
+function magnitude(vec) {
+    return dot(vec, vec);
+}
+
+/**
+ * @param {Float32Array} a
+ * @param {Float32Array} b
+ *
+ * @return number
+ */
+function dot(a, b) {
+    let d = 0;
+    for (let i = 0; i < a.length; i++) {
+        d += a[i] * b[i];
+    }
+    return d;
+}
+
+export { compileShader, createProgram, magnitude, dot };

@@ -30,8 +30,8 @@ void main() {
   float hr = 0.0;
   float hi = 0.0;
   float h = 0.0;
-  int N = int(modes[1]);
   int M = int(modes[0]);
+  int N = int(modes[1]);
 
   for (int j = 0; j < MODES_MAX; j++) {
     if (j >= N) { break; }
@@ -39,7 +39,7 @@ void main() {
     for (int i = 0; i < MODES_MAX; i++) {
       if (i >= M) { break; }
 
-      k = vec2(float(i), float(j)) / modes;
+      k = vec2(float(i), float(j)) / (modes - 1.0);
       amp = vec2(texture2D(amplitudes, k));
       k = (2.0 * k - 1.0) * scales * (2.0 * PI) / 2.0;
       hr += amp[0] * cos(dot(k, xy.xy)) - amp[1] * sin(dot(k, xy.xy));
@@ -56,7 +56,7 @@ void main() {
   h *= 0.5;
   h += 0.5;
 
-  // h = texture2D(amplitudes, vec2((xy.x + 1.0) * 0.5 * modes[0], (xy.y + 1.0) * 0.5 * modes[1]))[0];
+  // h = texture2D(amplitudes, vec2((xy.x + 1.0) * 0.5, (xy.y + 1.0) * 0.5))[1] / 150.0;
 
   gl_FragColor = vec4(h, h, h, 1);
 }
@@ -98,20 +98,27 @@ function gaussian(mean, std) {
  * @return
  */
 function initializeAmplitudes(amplitudes, params) {
-    let n, m;
+    let n, m, ii, jj;
+    let xir, xii, p;
     let k = new Float32Array({length: 2});
 
     for (let j = 0; j < params.modes.y; j++) {
-        n = j / params.modes.y * 2 - 1;
+        jj = params.modes.y - 1 - j;
+        n = j / (params.modes.y - 1) * 2 - 1;
         k[1] = TWOPI * n / params.scales.y;
 
         for (let i = 0; i < 2 * params.modes.x; i += 2) {
-            m = i / (2 * params.modes.x) * 2 - 1;
+            ii = 2 * params.modes.x - 2 - i;
+            m = i / (2 * params.modes.x - 2) * 2 - 1;
             k[0] = TWOPI * m / params.scales.x;
 
-            let p = phililipsSpectrum(k, params.windDirection, params.windMagnitude, params.g, params.amp, params.cutoff);
-            amplitudes[j * 2 * params.modes.x + i + 0] = p * gaussian(0, 1);
-            amplitudes[j * 2 * params.modes.x + i + 1] = p * gaussian(0, 1);
+            p = phililipsSpectrum(k, params.windDirection, params.windMagnitude, params.g, params.amp, params.cutoff);
+            xir = gaussian(0, 1) / 2;
+            xii = gaussian(0, 1) / 2;
+            amplitudes[j * 2 * params.modes.x + i + 0] += xir * p;
+            amplitudes[j * 2 * params.modes.x + i + 1] += xii * p;
+            amplitudes[jj * 2 * params.modes.x + ii + 0] += xir * p;
+            amplitudes[jj * 2 * params.modes.x + ii + 1] += -xii * p;
         }
     }
 }
@@ -132,8 +139,9 @@ function initializeSampleAmplitudes(amplitudes, params) {
             m = i / (2 * params.modes.x) * 2 - 1;
             kx = TWOPI * m / params.scales.x;
 
-            amplitudes[j * 2 * params.modes.x + i + 0] = 0.5 * Math.exp(-(kx * kx + ky * ky) * 8);
-            amplitudes[j * 2 * params.modes.x + i + 1] = 0.5 * (Math.cos(2 * (kx * kx + ky * ky) * 2 * Math.PI) + 1.0);
+            // amplitudes[j * 2 * params.modes.x + i + 0] = 1.0 * Math.exp(-(kx * kx + ky * ky) * 100);
+            amplitudes[j * 2 * params.modes.x + i + 0] = 1.0 * (Math.cos((kx * kx + ky * ky)) + 1.0);
+            amplitudes[j * 2 * params.modes.x + i + 1] = 0.0 * (Math.cos((kx * kx + ky * ky)) + 1.0);
         }
     }
 }
@@ -168,7 +176,7 @@ const main = function() {
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(positionBuffer, 2, gl.FLOAT, false, 0, 0);
 
-    var omega = new Float32Array([0.0, 21.0]);
+    var omega = new Float32Array([0.0, 20.0]);
     var omegaMag = magnitude(omega);
 
     const params = {
@@ -177,15 +185,14 @@ const main = function() {
         g: 9.81,
         windDirection: omega.map(t => t / Math.sqrt(omegaMag)),
         windMagnitude: omegaMag,
-        amp: 5.0,
+        amp: 4.0,
         cutoff: 1.0,
     };
 
-    var initialAmplitudes = new Float32Array({length: 2 * params.modes.x * params.modes.y});
-    var amplitudes = new Float32Array({length: 2 * params.modes.x * params.modes.y});
+    var initialAmplitudes = new Float32Array(2 * params.modes.x * params.modes.y);
 
     initializeAmplitudes(initialAmplitudes, params);
-    //initializeSampleAmplitudes(initialAmplitudes, params);
+    // initializeSampleAmplitudes(initialAmplitudes, params);
     console.log(`dx = ${params.scales.x / params.modes.x}, dy = ${params.scales.y / params.modes.y}`);
     console.log(`omegaMag / g = ${omegaMag / params.g}`);
     console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
@@ -199,6 +206,7 @@ const main = function() {
     let n, m;
 
     var t = 0.0;
+    var amplitudes = initialAmplitudes.slice();
     var k = new Float32Array({length: 2});
 
     var amplitudesBuffer = gl.createTexture();
@@ -217,12 +225,12 @@ const main = function() {
 
         for (let j = 0; j < params.modes.y; j++){
             jj = params.modes.y - 1 - j;
-            n = j / params.modes.y * 2 - 1;
+            n = j / (params.modes.y - 1) * 2 - 1;
             k[1] = TWOPI * n / params.scales.y;
 
             for (let i = 0; i < 2 * params.modes.x; i += 2) {
-                ii = 2 * params.modes.x - 1 - i;
-                m = i / (2 * params.modes.x) * 2 - 1;
+                ii = 2 * params.modes.x - 2 - i;
+                m = i / (2 * params.modes.x - 2) * 2 - 1;
                 k[0] = TWOPI * m / params.scales.x;
 
                 om = Math.sqrt(params.g * Math.sqrt(magnitude(k)));
@@ -232,19 +240,17 @@ const main = function() {
                 // TODO: slices
                 h0p = initialAmplitudes[j * 2 * params.modes.x + i + 0];
                 h1p = initialAmplitudes[j * 2 * params.modes.x + i + 1];
-                h0m = initialAmplitudes[jj * 2 * params.modes.x + ii - 1 + 0];
-                h1m = initialAmplitudes[jj * 2 * params.modes.x + ii - 1 + 1];
+                h0m = initialAmplitudes[jj * 2 * params.modes.x + ii + 0];
+                h1m = initialAmplitudes[jj * 2 * params.modes.x + ii + 1];
 
-                // console.log(i, j, ii, jj, t, om, h0p, h0m, h1p, h1m, com, som);
-
-                amplitudes[j * 2 * params.modes.x + i + 0] = (h0p + h0m) * com - (h1p + h1m) * som;
-                amplitudes[j * 2 * params.modes.x + i + 1] = (h1p - h1m) * com + (h0p - h0m) * som;
+                amplitudes[j * 2 * params.modes.x + i + 0] = (h0p + h0m) / 1.0 * com - (h1p + h1m) / 1.0 * som;
+                amplitudes[j * 2 * params.modes.x + i + 1] = (h1p - h1m) / 1.0 * com + (h0p - h0m) / 1.0 * som;
             }
         }
 
         // console.log(amplitudes);
         t += 0.1;
-        if (t < 1.0) {
+        if (t < 0.0) {
             window.setTimeout(() => window.requestAnimationFrame(render), 100);
         }
     }

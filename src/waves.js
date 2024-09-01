@@ -27,6 +27,8 @@ vec2 amp;
 vec2 k;
 
 void main() {
+  float hr = 0.0;
+  float hi = 0.0;
   float h = 0.0;
   int N = int(modes[1]);
   int M = int(modes[0]);
@@ -37,20 +39,24 @@ void main() {
     for (int i = 0; i < MODES_MAX; i++) {
       if (i >= M) { break; }
 
-      k = vec2(float(i) / modes[0] * 2.0 - 1.0, float(j) / modes[1] * 2.0 - 1.0);
+      k = vec2(float(i), float(j)) / modes;
       amp = vec2(texture2D(amplitudes, k));
-      k[0] *= 2.0 * PI * scales[0] / 2.0;
-      k[1] *= 2.0 * PI * scales[1] / 2.0;
-      h += amp[0] * cos(dot(k, xy.xy)) - amp[1] * sin(dot(k, xy.xy));
+      k = (2.0 * k - 1.0) * scales * (2.0 * PI) / 2.0;
+      hr += amp[0] * cos(dot(k, xy.xy)) - amp[1] * sin(dot(k, xy.xy));
+      hi += amp[0] * sin(dot(k, xy.xy)) + amp[1] * cos(dot(k, xy.xy));
     }
   }
 
+  // h = sqrt(hr*hr + hi*hi);
+  h = hr;
+
   h /= modes[0] * modes[1];
+  h /= sqrt(scales[0] * scales[1]);
   // h *= 50.0; // arbitrary
   h *= 0.5;
   h += 0.5;
 
-  //h = texture2D(amplitudes, vec2((xy.x + 1.0) * 0.5, (xy.y + 1.0) * 0.5))[0];
+  // h = texture2D(amplitudes, vec2((xy.x + 1.0) * 0.5 * modes[0], (xy.y + 1.0) * 0.5 * modes[1]))[0];
 
   gl_FragColor = vec4(h, h, h, 1);
 }
@@ -63,15 +69,16 @@ const TWOPI = 2.0 * Math.PI;
  * @param {Float32Array} omega
  * @param {number} omegaMag
  * @param {number} g
+ * @param {number} cutoff
  *
  * @return {number}
  */
-const phililipsSpectrum = function(k, omega, omegaMag, g, amp) {
+const phililipsSpectrum = function(k, omega, omegaMag, g, amp, cutoff) {
     // exp(-1/(k L)^2) / k^4 |\hat{k} \dot \hat{\omega}|^2
     // L = V^2 / g
     const kMag = magnitude(k);
     if (kMag > 0) {
-        return amp * Math.exp(-(g**2) / kMag / omegaMag**2 / 2) / kMag * dot(k.map(t => t / kMag), omega) / Math.pow(2, 1/4);
+        return amp * Math.exp(-(g**2) / kMag / omegaMag**2 / 2) / kMag * dot(k.map(t => t / Math.sqrt(kMag)), omega) / Math.pow(2, 1/4) * Math.exp(-(cutoff**2) * kMag);
     } else {
         return 0;
     }
@@ -102,7 +109,7 @@ function initializeAmplitudes(amplitudes, params) {
             m = i / (2 * params.modes.x) * 2 - 1;
             k[0] = TWOPI * m / params.scales.x;
 
-            let p = phililipsSpectrum(k, params.windDirection, params.windMagnitude, params.g, params.amp);
+            let p = phililipsSpectrum(k, params.windDirection, params.windMagnitude, params.g, params.amp, params.cutoff);
             amplitudes[j * 2 * params.modes.x + i + 0] = p * gaussian(0, 1);
             amplitudes[j * 2 * params.modes.x + i + 1] = p * gaussian(0, 1);
         }
@@ -161,19 +168,17 @@ const main = function() {
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(positionBuffer, 2, gl.FLOAT, false, 0, 0);
 
-    var omega = new Float32Array([2.1, 0.0]);
+    var omega = new Float32Array([0.0, 21.0]);
     var omegaMag = magnitude(omega);
 
-    console.log(omega)
-    console.log(omegaMag);
-
     const params = {
-        modes: { x: 32, y: 32 },
-        scales: { x: 20, y: 20 },
-        g: 1.0,
-        windDirection: omega.map(t => t / omegaMag),
+        modes: { x: 128, y: 128 },
+        scales: { x: 60, y: 40 },
+        g: 9.81,
+        windDirection: omega.map(t => t / Math.sqrt(omegaMag)),
         windMagnitude: omegaMag,
-        amp: 10.0,
+        amp: 5.0,
+        cutoff: 1.0,
     };
 
     var initialAmplitudes = new Float32Array({length: 2 * params.modes.x * params.modes.y});
@@ -181,6 +186,11 @@ const main = function() {
 
     initializeAmplitudes(initialAmplitudes, params);
     //initializeSampleAmplitudes(initialAmplitudes, params);
+    console.log(`dx = ${params.scales.x / params.modes.x}, dy = ${params.scales.y / params.modes.y}`);
+    console.log(`omegaMag / g = ${omegaMag / params.g}`);
+    console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
+    console.log(`(omegaMag / g) / dy = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
+    console.log(params);
     console.log("amplitudes set");
     console.log(initialAmplitudes);
 
@@ -191,17 +201,20 @@ const main = function() {
     var t = 0.0;
     var k = new Float32Array({length: 2});
 
+    var amplitudesBuffer = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, amplitudesBuffer);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    gl.uniform2f(modesLoc, params.modes.x, params.modes.y);
+    gl.uniform2f(scalesLoc, params.scales.x, params.scales.y);
+
     const render = function() {
-        var amplitudesBuffer = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, amplitudesBuffer);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-        gl.uniform2f(modesLoc, params.modes.x, params.modes.y);
-        gl.uniform2f(scalesLoc, params.scales.x, params.scales.y);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, params.modes.x, params.modes.y, 0, gl.RG, gl.FLOAT, amplitudes);
-
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+
         for (let j = 0; j < params.modes.y; j++){
             jj = params.modes.y - 1 - j;
             n = j / params.modes.y * 2 - 1;
@@ -230,9 +243,9 @@ const main = function() {
         }
 
         // console.log(amplitudes);
-        t += 0.5;
-        if (t < 100.0) {
-            window.setTimeout(() => window.requestAnimationFrame(render), 50);
+        t += 0.1;
+        if (t < 1.0) {
+            window.setTimeout(() => window.requestAnimationFrame(render), 100);
         }
     }
 

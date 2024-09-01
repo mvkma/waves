@@ -56,7 +56,7 @@ const phililipsSpectrum = function(k, omega, omegaMag) {
         k[i] /= kMag;
     }
 
-    return Math.exp(-(GRAVITY**2) / kMag / omegaMag**2) / kMag**2 * dot(k, omega)**2 / Math.sqrt(2);
+    return Math.exp(-(GRAVITY**2) / kMag / omegaMag**2 / 2) / kMag * dot(k, omega) / Math.pow(2, 1/4);
 }
 
 function gaussian(mean, std) {
@@ -68,20 +68,22 @@ function gaussian(mean, std) {
 
 /**
  * @param {Float32Array} amplitudes
- * @param {object} omega
+ * @param {object} params
  *
  * @return
  */
-function initializeAmplitudes(amplitudes, omega, omegaMag) {
-    const N = amplitudes.length;
+function initializeAmplitudes(amplitudes, params) {
     let k = new Float32Array({length: 2});
-    for (let j = 0; j < N; j++) {
-        k[1] = j / (N - 1) * 2 - 1;
-        for (let i = 0; i < 2 * N; i += 2) {
-            k[0] = i / (2 * N - 1) * 2 - 1;
-            let p = Math.sqrt(phililipsSpectrum(k, omega, omegaMag));
-            amplitudes[j * N + i + 0] = p * gaussian(0, 1);
-            amplitudes[j * N + i + 1] = p * gaussian(0, 1);
+
+    for (let j = 0; j < params.modes.y; j++) {
+        k[1] = j / params.modes.y * 2 - 1;
+
+        for (let i = 0; i < 2 * params.modes.x; i += 2) {
+            k[0] = i / (2 * params.modes.x) * 2 - 1;
+
+            let p = phililipsSpectrum(k, params.windDirection, params.windMagnitude);
+            amplitudes[j * 2 * params.modes.x + i + 0] = p * gaussian(0, 1);
+            amplitudes[j * 2 * params.modes.x + i + 1] = p * gaussian(0, 1);
         }
     }
 }
@@ -92,13 +94,15 @@ function initializeAmplitudes(amplitudes, omega, omegaMag) {
  *
  * @return
  */
-function initializeSampleAmplitudes(amplitudes) {
-    for (let j = 0; j < N; j++) {
-        let y = j / (N - 1) * 2 - 1;
-        for (let i = 0; i < 2 * N; i += 2) {
-            let x = i / (2 * N - 1) * 2 - 1;
-            amplitudes[j * 2 * N + i + 0] = Math.exp(-(x * x + y * y) * 8);
-            amplitudes[j * 2 * N + i + 1] = 0.5 * (Math.cos(2 * (x * x + y * y) * 2 * Math.PI) + 1.0);
+function initializeSampleAmplitudes(amplitudes, params) {
+    for (let j = 0; j < params.modes.y; j++) {
+        let ky = j / params.modes.y * 2 - 1;
+
+        for (let i = 0; i < 2 * params.modes.x; i += 2) {
+            let kx = i / (2 * params.modes.x) * 2 - 1;
+
+            amplitudes[j * 2 * params.modes.x + i + 0] = 0.5 * Math.exp(-(kx * kx + ky * ky) * 8);
+            amplitudes[j * 2 * params.modes.x + i + 1] = 0.5 * (Math.cos(2 * (kx * kx + ky * ky) * 2 * Math.PI) + 1.0);
         }
     }
 }
@@ -129,14 +133,22 @@ const main = function() {
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(positionBuffer, 2, gl.FLOAT, false, 0, 0);
 
-    const N = 32;
-    var omega = new Float32Array([0.9, 9.0]);
+    var omega = new Float32Array([0.9, 0.0]);
     var omegaMag = magnitude(omega);
 
-    var initialAmplitudes = new Float32Array({length: 2 * N * N});
-    var amplitudes = new Float32Array({length: 2 * N * N});
+    const params = {
+        modes: { x: 32, y: 32 },
+        scales: { x: 300, y: 300 },
+        g: 1.0,
+        windDirection: omega.map(t => t / omegaMag),
+        windMagnitude: omegaMag,
+    };
 
-    initializeAmplitudes(initialAmplitudes, omega.map(t => t / omegaMag), omegaMag);
+    var initialAmplitudes = new Float32Array({length: 2 * params.scales.x * params.scales.y});
+    var amplitudes = new Float32Array({length: 2 * params.scales.x * params.scales.y});
+
+    // NinitializeAmplitudes(initialAmplitudes, params);
+    initializeSampleAmplitudes(initialAmplitudes, params);
     console.log("amplitudes set");
     console.log(initialAmplitudes);
 
@@ -144,33 +156,8 @@ const main = function() {
     let com, som, ii, jj, om;
     let h0p, h0m, h1p, h1m;
     var k = new Float32Array({length: 2});
+
     const render = function() {
-        for (let j = 0; j < N; j++){
-            jj = N - 1 - j;
-            k[1] = j / (N - 1) * 2 - 1;
-            for (let i = 0; i < 2 * N; i += 2) {
-                ii = 2 * N - 1 - i;
-                k[0] = i / (2 * N - 1) * 2 - 1;
-
-                om = Math.sqrt(GRAVITY * Math.sqrt(magnitude(k)));
-                com = Math.cos(om * t);
-                som = Math.sin(om * t);
-
-                // TODO: slices
-                h0p = initialAmplitudes[j * 2 * N + i + 0];
-                h1p = initialAmplitudes[j * 2 * N + i + 1];
-                h0m = initialAmplitudes[jj * 2 * N + ii - 1 + 0];
-                h1m = initialAmplitudes[jj * 2 * N + ii - 1 + 1];
-
-                // console.log(i, j, ii, jj, t, om, h0p, h0m, h1p, h1m, com, som);
-
-                amplitudes[j * 2 * N + i + 0] = (h0p + h0m) * com - (h1p + h1m) * som;
-                amplitudes[j * 2 * N + i + 1] = (h1p - h1m) * com + (h0p - h0m) * som;
-            }
-        }
-        // console.log(amplitudes);
-        t += 0.5;
-
         var amplitudesBuffer = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, amplitudesBuffer);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -178,9 +165,36 @@ const main = function() {
         //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         //gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, N, N, 0, gl.RG, gl.FLOAT, amplitudes);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, params.modes.x, params.modes.y, 0, gl.RG, gl.FLOAT, amplitudes);
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+        for (let j = 0; j < params.modes.y; j++){
+            jj = params.modes.y - 1 - j;
+            k[1] = j / params.modes.y * 2 - 1;
+
+            for (let i = 0; i < 2 * params.modes.x; i += 2) {
+                ii = 2 * params.modes.x - 1 - i;
+                k[0] = i / (2 * params.modes.x) * 2 - 1;
+
+                om = Math.sqrt(params.g * Math.sqrt(magnitude(k)));
+                com = Math.cos(om * t);
+                som = Math.sin(om * t);
+
+                // TODO: slices
+                h0p = initialAmplitudes[j * 2 * params.modes.x + i + 0];
+                h1p = initialAmplitudes[j * 2 * params.modes.x + i + 1];
+                h0m = initialAmplitudes[jj * 2 * params.modes.x + ii - 1 + 0];
+                h1m = initialAmplitudes[jj * 2 * params.modes.x + ii - 1 + 1];
+
+                // console.log(i, j, ii, jj, t, om, h0p, h0m, h1p, h1m, com, som);
+
+                amplitudes[j * 2 * params.modes.x + i + 0] = (h0p + h0m) * com - (h1p + h1m) * som;
+                amplitudes[j * 2 * params.modes.x + i + 1] = (h1p - h1m) * com + (h0p - h0m) * som;
+            }
+        }
+
+        // console.log(amplitudes);
+        t += 0.5;
         if (t < 100.0) {
             window.setTimeout(() => window.requestAnimationFrame(render), 50);
         }

@@ -1,13 +1,21 @@
-import { compileShader, createProgram, magnitude, dot } from "./utils.js";
+import {
+    compileShader,
+    createProgram,
+    createTexture,
+    createFramebuffer,
+    magnitude,
+    dot
+} from "./utils.js";
 
 const vs = `
-attribute vec4 position;
+attribute vec4 a_position;
+
 varying vec4 xy;
 
 void main() {
-  gl_Position = position;
+  gl_Position = a_position;
   gl_PointSize = 5.0;
-  xy = position;
+  xy = a_position;
 }
 `;
 
@@ -62,14 +70,30 @@ void main() {
 }
 `;
 
+const dummyShader = `
+precision mediump float;
+
+uniform sampler2D u_input;
+
+varying vec4 xy; // [-1, 1]
+
+void main() {
+    vec4 value = texture2D(u_input, vec2(xy * 0.5 + 0.5));
+    float h = sqrt(value[0] * value[0] + value[1] * value[1]) / 2.0;
+    gl_FragColor = vec4(h, h, h, 1);
+}
+`
+
 const fftShader = `
 #define PI 3.1415926538
+
+precision mediump float;
 
 uniform sampler2D u_input;
 
 uniform float u_size;       // 2**k
 uniform float u_subsize;    // 2**i
-uniform float u_horizontal;
+uniform int u_horizontal;
 
 varying vec4 xy; // [-1, 1]
 
@@ -83,7 +107,7 @@ float ix_odd;  // [u_size / 2, u_size]
 vec2 even;
 vec2 odd;
 vec2 twiddle;
-vec2 output;
+vec2 res;
 
 vec2 mul_complex(vec2 a, vec2 b) {
     return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
@@ -91,7 +115,7 @@ vec2 mul_complex(vec2 a, vec2 b) {
 
 void main() {
 
-    if (horizontal == 1) {
+    if (u_horizontal == 1) {
         ix = (xy.x * 0.5 + 0.5) * u_size;
     } else {
         ix = (xy.y * 0.5 + 0.5) * u_size;
@@ -104,16 +128,16 @@ void main() {
     arg_twiddle = -2.0 * PI * floor(ix / (ratio / 2.0)) / (2.0 * u_subsize);
     twiddle = vec2(cos(arg_twiddle), sin(arg_twiddle));
 
-    if (horizontal == 1) {
-        even = texture2D(u_input, vec2(ix_even, gl_FragCoord.y) / u_size).xy;
-        odd = texture2D(u_input, vec2(ix_odd, gl_FragCoord.y) / u_size).xy;
+    if (u_horizontal == 1) {
+        even = texture2D(u_input, vec2(ix_even + 0.5, gl_FragCoord.y) / u_size).xy;
+        odd  = texture2D(u_input, vec2(ix_odd  + 0.5, gl_FragCoord.y) / u_size).xy;
     } else {
-        even = texture2D(u_input, vec2(gl_FracCoord.x, ix_even) / u_size).xy;
-        odd = texture2D(u_input, vec2(gl_FracCoord.x, ix_odd) / u_size).xy;
+        even = texture2D(u_input, vec2(gl_FragCoord.x, ix_even + 0.0) / u_size).xy;
+        odd  = texture2D(u_input, vec2(gl_FragCoord.x, ix_odd  + 0.0) / u_size).xy;
     }
 
-    output = even + mul_complex(twiddle, odd);
-    gl_FragColor = vec4(output, 0, 0);
+    res = even + mul_complex(twiddle, odd);
+    gl_FragColor = vec4(res, 0, 0);
 }
 `;
 
@@ -201,33 +225,117 @@ function initializeSampleAmplitudes(amplitudes, params) {
     }
 }
 
+/**
+ * @param {Float32Array} amplitudes
+ *
+ * @return
+ */
+function initializeSineAmplitudes(amplitudes, params) {
+    let n, m, kx, ky;
+
+    for (let j = 0; j < params.modes.y; j++) {
+        n = j / params.modes.y * 2 - 1;
+
+        for (let i = 0; i < 2 * params.modes.x; i += 2) {
+            m = i / (2 * params.modes.x) * 2 - 1;
+
+            amplitudes[j * 2 * params.modes.x + i + 0] = Math.cos(n * 100) + Math.cos(n * 200);
+            amplitudes[j * 2 * params.modes.x + i + 1] = Math.sin(n * 100) + Math.sin(n * 200);
+        }
+    }
+}
+
+
+/**
+ * @param {!WebGLRenderingContext} gl
+ * @param {!WebGLProgram} prog
+ * @param {number} inputUnit
+ * @param {!WebGLFramebuffer} outputBuffer
+ * @param {number} subSize
+ * @param {number} horizontal
+ */
+function fftStep(gl, prog, inputUnit, outputBuffer, subSize, horizontal) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, outputBuffer);
+    gl.uniform1i(gl.getUniformLocation(prog, "u_input"), inputUnit);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_subsize"), subSize);
+    gl.uniform1i(gl.getUniformLocation(prog, "u_horizontal"), horizontal);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+/**
+ * @param {!WebGLRenderingContext} gl
+ * @param {!WebGLProgram} prog
+ * @param {number} inputUnit
+ * @param {object} params
+ */
+function fft(gl, prog, inputUnit, outputBuffer, params) {
+    gl.useProgram(prog)
+    gl.uniform1f(gl.getUniformLocation(prog, "u_size"), params.modes.x);
+
+    let unitA = 6;
+    let unitB = 7;
+    let texA = createTexture(gl, unitA, params.modes.x, params.modes.y, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, null, gl.NEAREST);
+    let texB = createTexture(gl, unitB, params.modes.x, params.modes.y, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, null, gl.NEAREST);
+
+    let fbA = createFramebuffer(gl, texA);
+    let fbB = createFramebuffer(gl, texB);
+
+    let input, output, horizontal, subSize;
+
+    let k = Math.log2(params.modes.x);
+    for (let i = 0; i < k; i++) {
+        console.log(`i = ${i}`);
+
+        if (i === 0) {
+            input = inputUnit;
+            output = fbA;
+        } else if (i === k - 1) {
+            input = (k % 2 === 0) ? unitA : unitB;
+            output = outputBuffer;
+        } else if (i % 2 === 0) {
+            input = unitB;
+            output = fbA;
+        } else {
+            input = unitA;
+            output = fbB;
+        }
+
+        subSize = Math.pow(2, i);
+        fftStep(gl, prog, input, output, subSize, 0);
+    }
+}
+
 const main = function() {
     const gl = document.querySelector("canvas").getContext("webgl2");
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     console.log(gl.canvas.width, gl.canvas.height, canvas.clientWidth, canvas.clientHeight);
 
-    const prog = createProgram(gl, compileShader(gl, vs, gl.VERTEX_SHADER), compileShader(gl, fs, gl.FRAGMENT_SHADER));
-    const positionLoc = gl.getAttribLocation(prog, "position");
-    const modesLoc = gl.getUniformLocation(prog, "modes");
-    const scalesLoc = gl.getUniformLocation(prog, "scales");
+    const prog = createProgram(
+        gl,
+        compileShader(gl, vs, gl.VERTEX_SHADER),
+        compileShader(gl, fs, gl.FRAGMENT_SHADER)
+    );
+    const fftProg = createProgram(
+        gl,
+        compileShader(gl, vs, gl.VERTEX_SHADER),
+        compileShader(gl, fftShader, gl.FRAGMENT_SHADER)
+    );
+    const dummyProg = createProgram(
+        gl,
+        compileShader(gl, vs, gl.VERTEX_SHADER),
+        compileShader(gl, dummyShader, gl.FRAGMENT_SHADER)
+    );
 
-    gl.useProgram(prog);
+    gl.useProgram(dummyProg);
 
     var positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([
-            -1, -1,
-            +1, -1,
-            -1, +1,
-            -1, +1,
-            +1, -1,
-            +1, +1,
-        ]),
-        gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER,
+                  // new Float32Array([-1, -1, +1, -1, -1, +1, -1, +1, +1, -1, +1, +1,]),
+                  new Float32Array([-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0]),
+                  gl.STATIC_DRAW);
 
-    gl.enableVertexAttribArray(positionLoc);
+    gl.enableVertexAttribArray(gl.getAttribLocation(dummyProg, "a_position"));
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(positionBuffer, 2, gl.FLOAT, false, 0, 0);
 
@@ -246,33 +354,53 @@ const main = function() {
 
     var initialAmplitudes = new Float32Array(2 * params.modes.x * params.modes.y);
 
-    initializeAmplitudes(initialAmplitudes, params);
+    // initializeAmplitudes(initialAmplitudes, params);
     // initializeSampleAmplitudes(initialAmplitudes, params);
+    initializeSineAmplitudes(initialAmplitudes, params);
     console.log(`dx = ${params.scales.x / params.modes.x}, dy = ${params.scales.y / params.modes.y}`);
     console.log(`omegaMag / g = ${omegaMag / params.g}`);
     console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
     console.log(`(omegaMag / g) / dy = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
-    console.log(params);
-    console.log("amplitudes set");
     console.log(initialAmplitudes);
 
-    let com, som, ii, jj, om;
-    let h0p, h0m, h1p, h1m;
-    let n, m;
+    gl.viewport(0, 0, params.modes.x, params.modes.y);
+    var dummyUnit = 4;
+    var dummyTexture = createTexture(gl, dummyUnit, params.modes.x, params.modes.y, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, null, gl.LINEAR);
+    var dummyFb = createFramebuffer(gl, dummyTexture);
 
-    var t = 0.0;
-    var amplitudes = initialAmplitudes.slice();
-    var k = new Float32Array({length: 2});
+    var amplitudesUnit = 5;
+    var amplitudesTexture = createTexture(gl, amplitudesUnit, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, initialAmplitudes, gl.NEAREST);
 
-    var amplitudesBuffer = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, amplitudesBuffer);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.enableVertexAttribArray(gl.getAttribLocation(fftProg, "a_position"));
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.vertexAttribPointer(positionBuffer, 2, gl.FLOAT, false, 0, 0);
+    fft(gl, fftProg, amplitudesUnit, dummyFb, params);
 
-    gl.uniform2f(modesLoc, params.modes.x, params.modes.y);
-    gl.uniform2f(scalesLoc, params.scales.x, params.scales.y);
+    gl.useProgram(dummyProg);
+
+    gl.uniform1i(gl.getUniformLocation(dummyProg, "u_input"), dummyUnit);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // let com, som, ii, jj, om;
+    // let h0p, h0m, h1p, h1m;
+    // let n, m;
+
+    // var t = 0.0;
+    // var amplitudes = initialAmplitudes.slice();
+    // var k = new Float32Array({length: 2});
+
+    // var amplitudesBuffer = gl.createTexture();
+    // gl.bindTexture(gl.TEXTURE_2D, amplitudesBuffer);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    // gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    // gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    // gl.uniform2f(modesLoc, params.modes.x, params.modes.y);
+    // gl.uniform2f(scalesLoc, params.scales.x, params.scales.y);
 
     const render = function() {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, params.modes.x, params.modes.y, 0, gl.RG, gl.FLOAT, amplitudes);
@@ -310,7 +438,7 @@ const main = function() {
         }
     }
 
-    window.requestAnimationFrame(render);
+    // window.requestAnimationFrame(render);
 }
 
 window.onload = function(ev) {

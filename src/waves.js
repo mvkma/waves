@@ -310,12 +310,12 @@ const main = function() {
     gl.viewport(0, 0, params.modes.x, params.modes.y);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    // fft(gl, fftProg, TEXTURE_UNITS.amplitudes, outputFb, params);
-    // gl.useProgram(outputProg);
-    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
-
+    fft(gl, fftProg, TEXTURE_UNITS.amplitudes, outputFb, params);
     gl.useProgram(outputProg);
-    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.amplitudes);
+    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
+
+    // gl.useProgram(outputProg);
+    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.amplitudes);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);

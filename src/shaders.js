@@ -116,12 +116,19 @@ float im;
 vec2 k;
 
 void main() {
-    k = v_xy.xy;
+    k = v_xy.xy + vec2(0.0, 0.0);
 
     // re = u_amp * exp(-(k.x * k.x + k.y * k.y) * 5.0) * cos(k.x * k.x * 40.0) * sin(k.y * 20.0);
     // im = u_amp * 0.0;
 
-    re = u_amp * sin(k.x * 20.0 - k.y * 10.0);
+    // re = u_amp * sin(k.x * 20.0 - k.y * 10.0);
+    // im = u_amp * 0.0;
+
+    if (abs(k.x) < 0.05 && abs(k.y) < 0.10) {
+        re = 1.0;
+    } else {
+        re = 0.0;
+    }
     im = u_amp * 0.0;
 
     gl_FragColor = vec4(re, im, 0, 0);

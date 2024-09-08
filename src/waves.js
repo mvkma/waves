@@ -13,6 +13,7 @@ import {
     argumentShader,
     fftShader,
     sampleInitShader,
+    waveInitShader,
 } from "./shaders.js";
 
 const TWOPI = 2.0 * Math.PI;
@@ -178,7 +179,7 @@ const main = function() {
     const initProg = createProgram(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
-        compileShader(gl, sampleInitShader, gl.FRAGMENT_SHADER),
+        compileShader(gl, waveInitShader, gl.FRAGMENT_SHADER),
     );
     const fftProg = createProgram(
         gl,
@@ -214,8 +215,8 @@ const main = function() {
         g: 9.81,
         windDirection: omega.map(t => t / Math.sqrt(omegaMag)),
         windMagnitude: omegaMag,
-        amp: 2.0,
-        cutoff: 1.0,
+        amp: 0.002,
+        cutoff: 0.0,
     };
 
     // var initialAmplitudes = new Float32Array(2 * params.modes.x * params.modes.y);
@@ -260,17 +261,22 @@ const main = function() {
     gl.useProgram(initProg);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_size_x"), params.modes.x);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_size_y"), params.modes.y);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_scale_x"), params.scales.x);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_scale_y"), params.scales.y);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_omega_x"), omega[0]);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_omega_y"), omega[1]);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_cutoff"), params.cutoff);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_amp"), params.amp);
     gl.bindFramebuffer(gl.FRAMEBUFFER, amplitudesFb);
     gl.viewport(0, 0, params.modes.x, params.modes.y);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    fft(gl, fftProg, TEXTURE_UNITS.amplitudes, outputFb, params);
-    gl.useProgram(outputProg);
-    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
-
+    // fft(gl, fftProg, TEXTURE_UNITS.amplitudes, outputFb, params);
     // gl.useProgram(outputProg);
-    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.amplitudes);
+    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
+
+    gl.useProgram(outputProg);
+    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.amplitudes);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);

@@ -135,6 +135,68 @@ void main() {
 }
 `;
 
+const waveInitShader = `
+#define PI 3.1415926538
+#define G 9.81
+
+precision highp float;
+
+uniform float u_size_x;
+uniform float u_size_y;
+uniform float u_scale_x;
+uniform float u_scale_y;
+uniform float u_omega_x;
+uniform float u_omega_y;
+uniform float u_cutoff;
+uniform float u_amp;
+
+varying vec4 v_xy; // [-1, 1]
+
+// more or less uniform on [0, 1]
+float random(vec2 v) {
+    return fract(sin(dot(v.xy, vec2(12.9898,78.233))) * 43758.5453123) * 0.5 + 0.5;
+}
+
+float gaussian(vec2 xy) {
+    float u = 1.0 - random(xy);
+    if (u == 0.0) {
+        u = 0.33; // very random
+    }
+    float v = random(xy);
+
+    return sqrt(-2.0 * log(u)) * cos(2.0 * PI * v);
+}
+
+float phillips(vec2 k, vec2 omega, float omegaMag, float cutoff) {
+    float kMag = pow(length(k), 2.0);
+    if (kMag > 0.0) {
+        return exp(-pow(G, 2.0) / kMag / pow(omegaMag, 2.0) / 2.0) / kMag * dot(normalize(k), omega) / pow(2.0, 0.25) * exp(-pow(cutoff, 2.0) * kMag);
+    } else {
+        return 0.0;
+    }
+}
+
+float re;
+float im;
+float p;
+
+vec2 k;
+vec2 omega;
+
+void main() {
+    k = v_xy.xy * 2.0 * PI / vec2(u_scale_x, u_scale_y);
+
+    omega = vec2(u_omega_x, u_omega_y);
+    p = phillips(k, omega, pow(length(omega), 2.0), u_cutoff);
+
+    re = gaussian(v_xy.xy) * p * u_amp;
+    // im = gaussian(v_xy.xy + vec2(0.5, 0.5)) * p * u_amp;
+    im = 0.0;
+
+    gl_FragColor = vec4(re, im, 0, 0);
+}
+`;
+
 const fs = `
 #define MODES_MAX 2048
 #define PI 3.1415926538
@@ -186,4 +248,4 @@ void main() {
 }
 `;
 
-export { vertexShader, magntitudeShader, argumentShader, fftShader, sampleInitShader };
+export { vertexShader, magntitudeShader, argumentShader, fftShader, sampleInitShader, waveInitShader };

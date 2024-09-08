@@ -41,7 +41,7 @@ function createProgram(gl, vertexShader, fragmentShader) {
 
 /**
  * @param {!WebGLRenderingContext} gl
- * @param {!number} unit
+ * @param {!number} textureUnit
  * @param {!number} width
  * @param {!number} height
  * @param {!number} internalFormat
@@ -51,20 +51,16 @@ function createProgram(gl, vertexShader, fragmentShader) {
  *
  * @return {!WebGLTexture}
  */
-function createTexture(gl, unit, width, height, internalFormat, format, type, pixels, filterParam, clampParam) {
+function createTexture(gl, textureUnit, width, height, internalFormat, format, type, filterParam, clampParam, pixels) {
     var texture = gl.createTexture();
-    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.activeTexture(gl.TEXTURE0 + textureUnit);
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filterParam);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filterParam);
-    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filterParam);
-    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filterParam);
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, clampParam);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, clampParam);
-    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, clampParam);
-    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, clampParam);
 
     gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, pixels);
 

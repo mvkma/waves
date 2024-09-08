@@ -84,51 +84,6 @@ function initializeAmplitudes(amplitudes, params) {
 }
 
 /**
- * @param {Float32Array} amplitudes
- *
- * @return
- */
-function initializeSampleAmplitudes(amplitudes, params) {
-    let n, m, kx, ky;
-
-    for (let j = 0; j < params.modes.y; j++) {
-        n = j / params.modes.y * 2 - 1;
-        ky = TWOPI * n / params.scales.y;
-
-        for (let i = 0; i < 2 * params.modes.x; i += 2) {
-            m = i / (2 * params.modes.x) * 2 - 1;
-            kx = TWOPI * m / params.scales.x;
-
-            amplitudes[j * 2 * params.modes.x + i + 0] = params.amp * Math.exp(-(kx * kx + ky * ky) * 100) * Math.cos((kx * kx) * 400) * Math.sin((ky) * 200);
-            amplitudes[j * 2 * params.modes.x + i + 1] = 0.0;
-            // amplitudes[j * 2 * params.modes.x + i + 0] = params.amp * Math.cos((kx * kx + ky * ky));
-            // amplitudes[j * 2 * params.modes.x + i + 1] = params.amp * Math.sin((kx * kx + ky * ky));
-        }
-    }
-}
-
-/**
- * @param {Float32Array} amplitudes
- *
- * @return
- */
-function initializeSineAmplitudes(amplitudes, params) {
-    let n, m, kx, ky;
-
-    for (let j = 0; j < params.modes.y; j++) {
-        n = j / params.modes.y * 2 - 1;
-
-        for (let i = 0; i < 2 * params.modes.x; i += 2) {
-            m = i / (2 * params.modes.x) * 2 - 1;
-
-            amplitudes[j * 2 * params.modes.x + i + 0] = (Math.cos(n * 300) + Math.cos(m * 200)) * params.amp;
-            amplitudes[j * 2 * params.modes.x + i + 1] = (Math.sin(n * 300) + Math.sin(m * 200)) * params.amp;
-        }
-    }
-}
-
-
-/**
  * @param {!WebGLRenderingContext} gl
  * @param {!WebGLProgram} prog
  * @param {number} inputTextureUnit

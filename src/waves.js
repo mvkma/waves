@@ -12,6 +12,7 @@ import {
     magntitudeShader,
     argumentShader,
     fftShader,
+    sampleInitShader,
 } from "./shaders.js";
 
 const TWOPI = 2.0 * Math.PI;
@@ -219,6 +220,11 @@ const main = function() {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     console.log(gl.canvas.width, gl.canvas.height, canvas.clientWidth, canvas.clientHeight);
 
+    const initProg = createProgram(
+        gl,
+        compileShader(gl, vertexShader, gl.VERTEX_SHADER),
+        compileShader(gl, sampleInitShader, gl.FRAGMENT_SHADER),
+    );
     const fftProg = createProgram(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
@@ -248,39 +254,70 @@ const main = function() {
     var omegaMag = magnitude(omega);
 
     const params = {
-        modes: { x: 512, y: 512 },
+        modes: { x: 128, y: 128 },
         scales: { x: 60, y: 40 },
         g: 9.81,
         windDirection: omega.map(t => t / Math.sqrt(omegaMag)),
         windMagnitude: omegaMag,
-        amp: 1.0,
+        amp: 2.0,
         cutoff: 1.0,
     };
 
-    var initialAmplitudes = new Float32Array(2 * params.modes.x * params.modes.y);
+    // var initialAmplitudes = new Float32Array(2 * params.modes.x * params.modes.y);
 
     // initializeAmplitudes(initialAmplitudes, params);
-    initializeSampleAmplitudes(initialAmplitudes, params);
+    // initializeSampleAmplitudes(initialAmplitudes, params);
     // initializeSineAmplitudes(initialAmplitudes, params);
     console.log(`dx = ${params.scales.x / params.modes.x}, dy = ${params.scales.y / params.modes.y}`);
     console.log(`omegaMag / g = ${omegaMag / params.g}`);
     console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
     console.log(`(omegaMag / g) / dy = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
-    console.log(initialAmplitudes);
+    // console.log(initialAmplitudes);
 
-    var outputTexture = createTexture(gl, TEXTURE_UNITS.output, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, gl.NEAREST, gl.CLAMP_TO_EDGE, null);
-    var outputFb = createFramebuffer(gl, outputTexture);
+    var outputFb = createFramebuffer(
+        gl,
+        createTexture(gl,
+                      TEXTURE_UNITS.output,
+                      params.modes.x,
+                      params.modes.y,
+                      gl.RG16F,
+                      gl.RG,
+                      gl.FLOAT,
+                      gl.NEAREST,
+                      gl.CLAMP_TO_EDGE,
+                      null),
+    );
 
-    var amplitudesTexture = createTexture(gl, TEXTURE_UNITS.amplitudes, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, gl.NEAREST, gl.CLAMP_TO_EDGE, initialAmplitudes);
+    var amplitudesFb = createFramebuffer(
+        gl,
+        createTexture(gl,
+                      TEXTURE_UNITS.amplitudes,
+                      params.modes.x,
+                      params.modes.y,
+                      gl.RG16F,
+                      gl.RG,
+                      gl.FLOAT,
+                      gl.NEAREST,
+                      gl.CLAMP_TO_EDGE,
+                      null),
+    );
 
-    fft(gl, fftProg, TEXTURE_UNITS.amplitudes, outputFb, params);
-    gl.useProgram(outputProg);
-    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
+    gl.useProgram(initProg);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_size_x"), params.modes.x);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_size_y"), params.modes.y);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_amp"), params.amp);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, amplitudesFb);
+    gl.viewport(0, 0, params.modes.x, params.modes.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
+    // fft(gl, fftProg, TEXTURE_UNITS.amplitudes, outputFb, params);
     // gl.useProgram(outputProg);
-    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.amplitudes);
+    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.useProgram(outputProg);
+    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.amplitudes);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 

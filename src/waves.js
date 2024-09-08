@@ -71,6 +71,8 @@ void main() {
 `;
 
 const dummyShader = `
+#define PI 3.1415926538
+
 precision highp float;
 
 uniform sampler2D u_input;
@@ -79,7 +81,9 @@ varying vec4 xy; // [-1, 1]
 
 void main() {
     vec4 value = texture2D(u_input, vec2(xy * 0.5 + 0.5));
-    float h = sqrt(value[0] * value[0] + value[1] * value[1]) / 8.0;
+    float h = sqrt(value[0] * value[0] + value[1] * value[1]) / 1.0;
+    h = 1.0 - h;
+    // float h = atan(value[1], value[0]) / PI;
     gl_FragColor = vec4(h, h, h, 1);
 }
 `
@@ -129,11 +133,11 @@ void main() {
     twiddle = vec2(cos(arg_twiddle), sin(arg_twiddle));
 
     if (u_horizontal == 1) {
-        even = texture2D(u_input, vec2(ix_even - 0.5, gl_FragCoord.y) / u_size).rg;
-        odd  = texture2D(u_input, vec2(ix_odd  - 0.5, gl_FragCoord.y) / u_size).rg;
+        even = texture2D(u_input, vec2(ix_even - 0.0, gl_FragCoord.y) / u_size).rg;
+        odd  = texture2D(u_input, vec2(ix_odd  - 0.0, gl_FragCoord.y) / u_size).rg;
     } else {
-        even = texture2D(u_input, vec2(gl_FragCoord.x, ix_even - 0.5) / u_size).rg;
-        odd  = texture2D(u_input, vec2(gl_FragCoord.x, ix_odd  - 0.5) / u_size).rg;
+        even = texture2D(u_input, vec2(gl_FragCoord.x, ix_even + 0.0) / u_size).rg;
+        odd  = texture2D(u_input, vec2(gl_FragCoord.x, ix_odd  + 0.0) / u_size).rg;
     }
 
     res = even + mul_complex(twiddle, odd);
@@ -240,8 +244,8 @@ function initializeSineAmplitudes(amplitudes, params) {
         for (let i = 0; i < 2 * params.modes.x; i += 2) {
             m = i / (2 * params.modes.x) * 2 - 1;
 
-            amplitudes[j * 2 * params.modes.x + i + 0] = (Math.cos(n * 100) + Math.cos(n * 200)) * params.amp;
-            amplitudes[j * 2 * params.modes.x + i + 1] = (Math.sin(n * 100) + Math.sin(n * 200)) * params.amp;
+            amplitudes[j * 2 * params.modes.x + i + 0] = (Math.cos(n * 300) + Math.cos(m * 200)) * params.amp;
+            amplitudes[j * 2 * params.modes.x + i + 1] = (Math.sin(n * 300) + Math.sin(m * 200)) * params.amp;
         }
     }
 }
@@ -277,8 +281,8 @@ function fft(gl, prog, inputUnit, outputBuffer, params) {
 
     let unitA = 6;
     let unitB = 7;
-    let texA = createTexture(gl, unitA, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, null, gl.NEAREST);
-    let texB = createTexture(gl, unitB, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, null, gl.NEAREST);
+    let texA = createTexture(gl, unitA, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, null, gl.NEAREST, gl.CLAMP_TO_EDGE);
+    let texB = createTexture(gl, unitB, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, null, gl.NEAREST, gl.CLAMP_TO_EDGE);
 
     let fbA = createFramebuffer(gl, texA);
     let fbB = createFramebuffer(gl, texB);
@@ -288,15 +292,15 @@ function fft(gl, prog, inputUnit, outputBuffer, params) {
 
     let k = Math.log2(params.modes.x);
     let horizontal = 0;
-    for (let i = 0; i < k; i++) {
+    for (let i = 0; i < 2 * k; i++) {
         subSize = Math.pow(2, i % k);
         console.log(`i = ${i}, subsize = ${subSize}`);
 
         if (i === 0) {
             input = inputUnit;
             output = fbA;
-        } else if (i === k - 1) {
-            input = (k % 2 === 0) ? unitA : unitB;
+        } else if (i === 2 * k - 1) {
+            input = ((2 * k) % 2 === 0) ? unitA : unitB;
             output = outputBuffer;
         } else if (i % 2 === 0) {
             input = unitB;
@@ -306,13 +310,13 @@ function fft(gl, prog, inputUnit, outputBuffer, params) {
             output = fbB;
         }
 
-        // if (i === k) {
-        //     horizontal = 1;
-        // }
+        if (i === k) {
+            horizontal = 1;
+        }
 
         fftStep(gl, prog, input, output, 2**k, subSize, horizontal);
         // gl.readPixels(0, 0, params.modes.x, params.modes.y, gl.RGBA, gl.FLOAT, tmpBuffer);
-        // for (let j = 0; j < 4; i++) {
+        // for (let j = 0; j < 4; j++) {
         //     console.log(tmpBuffer.slice(j * 4 * 4, j * 4 * 4 + 4));
         // } 
     }
@@ -365,7 +369,7 @@ const main = function() {
         g: 9.81,
         windDirection: omega.map(t => t / Math.sqrt(omegaMag)),
         windMagnitude: omegaMag,
-        amp: 0.2,
+        amp: 2.0,
         cutoff: 1.0,
     };
 
@@ -381,11 +385,11 @@ const main = function() {
     console.log(initialAmplitudes);
 
     var dummyUnit = 4;
-    var dummyTexture = createTexture(gl, dummyUnit, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, null, gl.NEAREST);
+    var dummyTexture = createTexture(gl, dummyUnit, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, null, gl.LINEAR, gl.CLAMP_TO_EDGE);
     var dummyFb = createFramebuffer(gl, dummyTexture);
 
     var amplitudesUnit = 5;
-    var amplitudesTexture = createTexture(gl, amplitudesUnit, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, initialAmplitudes, gl.NEAREST);
+    var amplitudesTexture = createTexture(gl, amplitudesUnit, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, initialAmplitudes, gl.NEAREST, gl.CLAMP_TO_EDGE);
 
     fft(gl, fftProg, amplitudesUnit, dummyFb, params);
     gl.useProgram(dummyProg);

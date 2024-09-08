@@ -222,7 +222,7 @@ function initializeSampleAmplitudes(amplitudes, params) {
             m = i / (2 * params.modes.x) * 2 - 1;
             kx = TWOPI * m / params.scales.x;
 
-            amplitudes[j * 2 * params.modes.x + i + 0] = params.amp * Math.exp(-(kx * kx + ky * ky) * 10);
+            amplitudes[j * 2 * params.modes.x + i + 0] = params.amp * Math.exp(-(kx * kx + ky * ky) * 100) * Math.cos((kx * kx) * 400) * Math.sin((ky) * 200);
             amplitudes[j * 2 * params.modes.x + i + 1] = 0.0;
             // amplitudes[j * 2 * params.modes.x + i + 0] = params.amp * Math.cos((kx * kx + ky * ky));
             // amplitudes[j * 2 * params.modes.x + i + 1] = params.amp * Math.sin((kx * kx + ky * ky));
@@ -364,20 +364,20 @@ const main = function() {
     var omegaMag = magnitude(omega);
 
     const params = {
-        modes: { x: 128, y: 128 },
+        modes: { x: 512, y: 512 },
         scales: { x: 60, y: 40 },
         g: 9.81,
         windDirection: omega.map(t => t / Math.sqrt(omegaMag)),
         windMagnitude: omegaMag,
-        amp: 2.0,
+        amp: 1.0,
         cutoff: 1.0,
     };
 
     var initialAmplitudes = new Float32Array(2 * params.modes.x * params.modes.y);
 
     // initializeAmplitudes(initialAmplitudes, params);
-    // initializeSampleAmplitudes(initialAmplitudes, params);
-    initializeSineAmplitudes(initialAmplitudes, params);
+    initializeSampleAmplitudes(initialAmplitudes, params);
+    // initializeSineAmplitudes(initialAmplitudes, params);
     console.log(`dx = ${params.scales.x / params.modes.x}, dy = ${params.scales.y / params.modes.y}`);
     console.log(`omegaMag / g = ${omegaMag / params.g}`);
     console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
@@ -385,7 +385,7 @@ const main = function() {
     console.log(initialAmplitudes);
 
     var dummyUnit = 4;
-    var dummyTexture = createTexture(gl, dummyUnit, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, null, gl.LINEAR, gl.CLAMP_TO_EDGE);
+    var dummyTexture = createTexture(gl, dummyUnit, params.modes.x, params.modes.y, gl.RG16F, gl.RG, gl.FLOAT, null, gl.NEAREST, gl.CLAMP_TO_EDGE);
     var dummyFb = createFramebuffer(gl, dummyTexture);
 
     var amplitudesUnit = 5;

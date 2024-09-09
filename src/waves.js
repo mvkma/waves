@@ -9,8 +9,8 @@ import {
 
 import {
     vertexShader,
-    magntitudeShader,
-    argumentShader,
+    greyscaleShader,
+    conjugationShader,
     fftShader,
     sampleInitShader,
     waveInitShader,
@@ -121,7 +121,7 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
                       gl.RG16F,
                       gl.RG,
                       gl.FLOAT,
-                      gl.NEAREST,
+                      gl.LINEAR,
                       gl.CLAMP_TO_EDGE,
                       null),
     );
@@ -181,6 +181,11 @@ const main = function() {
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
         compileShader(gl, waveInitShader, gl.FRAGMENT_SHADER),
     );
+    const conjugationProg = createProgram(
+        gl,
+        compileShader(gl, vertexShader, gl.VERTEX_SHADER),
+        compileShader(gl, conjugationShader, gl.FRAGMENT_SHADER),
+    );
     const fftProg = createProgram(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
@@ -189,7 +194,7 @@ const main = function() {
     const outputProg = createProgram(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
-        compileShader(gl, magntitudeShader, gl.FRAGMENT_SHADER)
+        compileShader(gl, greyscaleShader, gl.FRAGMENT_SHADER)
     );
 
     gl.useProgram(outputProg);
@@ -206,29 +211,20 @@ const main = function() {
     gl.vertexAttribPointer(positionBuffer, 2, gl.FLOAT, false, 0, 0);
 
     // Initalization
-    var omega = new Float32Array([0.0, 20.0]);
-    var omegaMag = magnitude(omega);
-
     const params = {
-        modes: { x: 128, y: 128 },
-        scales: { x: 60, y: 40 },
+        modes: { x: 256, y: 256 },
+        scales: { x: 300, y: 200 },
         g: 9.81,
-        windDirection: omega.map(t => t / Math.sqrt(omegaMag)),
-        windMagnitude: omegaMag,
-        amp: 0.002,
+        wind: [30.0, 0.0],
+        amp: 1 / 300 / 200,
         cutoff: 0.0,
     };
 
-    // var initialAmplitudes = new Float32Array(2 * params.modes.x * params.modes.y);
-
-    // initializeAmplitudes(initialAmplitudes, params);
-    // initializeSampleAmplitudes(initialAmplitudes, params);
-    // initializeSineAmplitudes(initialAmplitudes, params);
+    var omegaMag = magnitude(params.wind);
     console.log(`dx = ${params.scales.x / params.modes.x}, dy = ${params.scales.y / params.modes.y}`);
     console.log(`omegaMag / g = ${omegaMag / params.g}`);
     console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
     console.log(`(omegaMag / g) / dy = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
-    // console.log(initialAmplitudes);
 
     var outputFb = createFramebuffer(
         gl,
@@ -239,7 +235,7 @@ const main = function() {
                       gl.RG16F,
                       gl.RG,
                       gl.FLOAT,
-                      gl.NEAREST,
+                      gl.LINEAR,
                       gl.CLAMP_TO_EDGE,
                       null),
     );
@@ -263,20 +259,40 @@ const main = function() {
     gl.uniform1f(gl.getUniformLocation(initProg, "u_size_y"), params.modes.y);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_scale_x"), params.scales.x);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_scale_y"), params.scales.y);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_omega_x"), omega[0]);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_omega_y"), omega[1]);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_omega_x"), params.wind[0]);
+    gl.uniform1f(gl.getUniformLocation(initProg, "u_omega_y"), params.wind[1]);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_cutoff"), params.cutoff);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_amp"), params.amp);
     gl.bindFramebuffer(gl.FRAMEBUFFER, amplitudesFb);
     gl.viewport(0, 0, params.modes.x, params.modes.y);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    // fft(gl, fftProg, TEXTURE_UNITS.amplitudes, outputFb, params);
+    gl.useProgram(conjugationProg);
+    gl.uniform1i(gl.getUniformLocation(conjugationProg, "u_input"), TEXTURE_UNITS.amplitudes);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, outputFb);
+    gl.viewport(0, 0, params.modes.x, params.modes.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    let tmpBuffer = new Float32Array(params.modes.x * params.modes.y * 4);
+    gl.readPixels(0, 0, params.modes.x, params.modes.y, gl.RGBA, gl.FLOAT, tmpBuffer);
+    console.log(tmpBuffer);
+    let tmpBuffer2 = new Float32Array(params.modes.x * params.modes.y * 2);
+    let windMag = params.wind[0] * params.wind[0] + params.wind[1] * params.wind[1];
+    initializeAmplitudes(tmpBuffer2, { ...params, windDirection: [params.wind[0] / Math.sqrt(windMag), params.wind[1] / Math.sqrt(windMag)], windMagnitude: windMag});
+    console.log(tmpBuffer2);
+
+    fft(gl, fftProg, TEXTURE_UNITS.output, outputFb, params);
+    gl.useProgram(outputProg);
+    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
+    gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 0);
+    gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.5);
+    gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 10);
+
     // gl.useProgram(outputProg);
     // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
-
-    gl.useProgram(outputProg);
-    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.amplitudes);
+    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 4);
+    // gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.0);
+    // gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 0.1);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);

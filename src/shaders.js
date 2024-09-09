@@ -9,37 +9,44 @@ void main() {
 }
 `;
 
-const magntitudeShader = `
+const greyscaleShader = `
 #define PI 3.1415926538
 
 precision highp float;
 
 uniform sampler2D u_input;
+uniform float u_scale;
+uniform float u_offset;
+uniform int u_type;
 
 varying vec4 v_xy; // [-1, 1]
 
-void main() {
-    vec4 value = texture2D(u_input, vec2(v_xy * 0.5 + 0.5));
-    float h = sqrt(value[0] * value[0] + value[1] * value[1]) / 1.0;
-    h = 1.0 - h;
-    gl_FragColor = vec4(h, h, h, 1);
-}
-`;
-
-const argumentShader = `
-#define PI 3.1415926538
-
-precision highp float;
-
-uniform sampler2D u_input;
-
-varying vec4 v_xy; // [-1, 1]
+float h;
 
 void main() {
     vec4 value = texture2D(u_input, vec2(v_xy * 0.5 + 0.5));
-    float h = atan(value[1], value[0]) / PI;
+
+    if (u_type == 0) {
+        h = value[0];
+    } else if (u_type == 1) {
+        h = value[1];
+    } else if (u_type == 2) {
+        h = value[2];
+    } else if (u_type == 3) {
+        h = value[3];
+    } else if (u_type == 4) {
+        h = sqrt(value[0] * value[0] + value[1] * value[1]);
+    } else if (u_type == 5) {
+        h = atan(value[1], value[0]) / PI;
+    } else {
+        h = 0.0;
+    }
+
+    h = h / u_scale + u_offset;
+
     gl_FragColor = vec4(h, h, h, 1);
 }
+
 `;
 
 const fftShader = `
@@ -61,11 +68,13 @@ float arg_twiddle;
 float ix;      // [0, u_size]
 float ix_even; // [0, u_size / 2]
 float ix_odd;  // [u_size / 2, u_size]
+float jx;      // [0, u_size]
 
 vec2 even;
 vec2 odd;
 vec2 twiddle;
 vec2 res;
+vec2 offset;
 
 vec2 mul_complex(vec2 a, vec2 b) {
     return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
@@ -75,8 +84,10 @@ void main() {
 
     if (u_horizontal == 1) {
         ix = (v_xy.x * 0.5 + 0.5) * u_size;
+        jx = (v_xy.y * 0.5 + 0.5) * u_size;
     } else {
         ix = (v_xy.y * 0.5 + 0.5) * u_size;
+        jx = (v_xy.x * 0.5 + 0.5) * u_size;
     }
 
     ratio = u_size / u_subsize; // 2**(k - i)
@@ -86,12 +97,13 @@ void main() {
     arg_twiddle = -2.0 * PI * floor(ix / (ratio / 2.0)) / (2.0 * u_subsize);
     twiddle = vec2(cos(arg_twiddle), sin(arg_twiddle));
 
+    offset = vec2(0.5, 0.5);
     if (u_horizontal == 1) {
-        even = texture2D(u_input, vec2(ix_even - 0.0, gl_FragCoord.y) / u_size).rg;
-        odd  = texture2D(u_input, vec2(ix_odd  - 0.0, gl_FragCoord.y) / u_size).rg;
+        even = texture2D(u_input, (vec2(ix_even, jx) + offset) / u_size).rg;
+        odd  = texture2D(u_input, (vec2(ix_odd , jx) + offset) / u_size).rg;
     } else {
-        even = texture2D(u_input, vec2(gl_FragCoord.x, ix_even + 0.0) / u_size).rg;
-        odd  = texture2D(u_input, vec2(gl_FragCoord.x, ix_odd  + 0.0) / u_size).rg;
+        even = texture2D(u_input, (vec2(jx, ix_even) + offset) / u_size).rg;
+        odd  = texture2D(u_input, (vec2(jx, ix_odd ) + offset) / u_size).rg;
     }
 
     res = even + mul_complex(twiddle, odd);
@@ -168,9 +180,9 @@ float gaussian(vec2 xy) {
 }
 
 float phillips(vec2 k, vec2 omega, float omegaMag, float cutoff) {
-    float kMag = pow(length(k), 2.0);
+    float kMag = k.x * k.x + k.y * k.y;
     if (kMag > 0.0) {
-        return exp(-pow(G, 2.0) / kMag / pow(omegaMag, 2.0) / 2.0) / kMag * dot(normalize(k), omega) / pow(2.0, 0.25) * exp(-pow(cutoff, 2.0) * kMag);
+        return exp(-pow(G, 2.0) / kMag / pow(omegaMag, 2.0) / 2.0) / kMag * dot(normalize(k), normalize(omega)) / pow(2.0, 0.25) * exp(-pow(cutoff, 2.0) * kMag / 2.0);
     } else {
         return 0.0;
     }
@@ -178,7 +190,7 @@ float phillips(vec2 k, vec2 omega, float omegaMag, float cutoff) {
 
 float re;
 float im;
-float p;
+float pp;
 
 vec2 k;
 vec2 omega;
@@ -187,13 +199,42 @@ void main() {
     k = v_xy.xy * 2.0 * PI / vec2(u_scale_x, u_scale_y);
 
     omega = vec2(u_omega_x, u_omega_y);
-    p = phillips(k, omega, pow(length(omega), 2.0), u_cutoff);
+    pp = phillips( k, omega, omega.x * omega.x + omega.y * omega.y, u_cutoff);
 
-    re = gaussian(v_xy.xy) * p * u_amp;
-    // im = gaussian(v_xy.xy + vec2(0.5, 0.5)) * p * u_amp;
-    im = 0.0;
+    re = pp * u_amp * gaussian(v_xy.xy - vec2(1.0 / PI, 1.0 / PI));
+    im = pp * u_amp * gaussian(v_xy.xy + vec2(1.0 / PI, 1.0 / PI));
 
     gl_FragColor = vec4(re, im, 0, 0);
+}
+`;
+
+const conjugationShader = `
+#define PI 3.1415926538
+
+precision highp float;
+
+uniform sampler2D u_input;
+
+varying vec4 v_xy;
+
+vec2 conjugate(vec2 a) {
+    return vec2(a[0], -a[1]);
+}
+
+vec2 hp;
+vec2 hm;
+vec2 kp;
+vec2 km;
+
+void main() {
+    kp = ( v_xy.xy * 0.5 + 0.5);
+    km = (-v_xy.xy * 0.5 + 0.5);
+
+    hp = texture2D(u_input, kp + 0.0 / 256.0).xy;
+    hm = texture2D(u_input, km - 0.0 / 256.0).xy;
+    // hm = vec2(0, 0);
+
+    gl_FragColor = vec4(hp + conjugate(hm), 1, 1);
 }
 `;
 
@@ -248,4 +289,11 @@ void main() {
 }
 `;
 
-export { vertexShader, magntitudeShader, argumentShader, fftShader, sampleInitShader, waveInitShader };
+export {
+    vertexShader,
+    greyscaleShader,
+    conjugationShader,
+    fftShader,
+    sampleInitShader,
+    waveInitShader,
+};

@@ -14,9 +14,10 @@ const greyscaleShader = `
 
 precision highp float;
 
-uniform sampler2D u_input;
+uniform highp sampler2D u_input;
 uniform float u_scale;
 uniform float u_offset;
+uniform vec2 u_coordScale;
 uniform int u_type;
 
 varying vec4 v_xy; // [-1, 1]
@@ -24,7 +25,7 @@ varying vec4 v_xy; // [-1, 1]
 float h;
 
 void main() {
-    vec4 value = texture2D(u_input, vec2(v_xy * 0.5 + 0.5));
+    vec4 value = texture2D(u_input, vec2(v_xy.xy / u_coordScale * 0.5 + 0.5));
 
     if (u_type == 0) {
         h = value[0];
@@ -54,7 +55,7 @@ const fftShader = `
 
 precision highp float;
 
-uniform sampler2D u_input;
+uniform highp sampler2D u_input;
 
 uniform float u_size;       // 2**k
 uniform float u_subsize;    // 2**i
@@ -97,7 +98,7 @@ void main() {
     arg_twiddle = -2.0 * PI * floor(ix / (ratio / 2.0)) / (2.0 * u_subsize);
     twiddle = vec2(cos(arg_twiddle), sin(arg_twiddle));
 
-    offset = vec2(0.5, 0.5);
+    offset = vec2(0.0, 0.0);
     if (u_horizontal == 1) {
         even = texture2D(u_input, (vec2(ix_even, jx) + offset) / u_size).rg;
         odd  = texture2D(u_input, (vec2(ix_odd , jx) + offset) / u_size).rg;
@@ -107,6 +108,8 @@ void main() {
     }
 
     res = even + mul_complex(twiddle, odd);
+    arg_twiddle = -PI * (1.0 * ix + 0.0 * jx - 1.0 * u_size / 2.0);
+    res = mul_complex(res, vec2(cos(arg_twiddle), sin(arg_twiddle)));
     gl_FragColor = vec4(res, 0, 0);
 }
 `;
@@ -153,12 +156,10 @@ const waveInitShader = `
 
 precision highp float;
 
-uniform float u_size_x;
-uniform float u_size_y;
-uniform float u_scale_x;
-uniform float u_scale_y;
-uniform float u_omega_x;
-uniform float u_omega_y;
+uniform vec2 u_modes;
+uniform vec2 u_scales;
+uniform vec2 u_omega;
+uniform vec2 u_seed;
 uniform float u_cutoff;
 uniform float u_amp;
 
@@ -182,7 +183,7 @@ float gaussian(vec2 xy) {
 float phillips(vec2 k, vec2 omega, float omegaMag, float cutoff) {
     float kMag = k.x * k.x + k.y * k.y;
     if (kMag > 0.0) {
-        return exp(-pow(G, 2.0) / kMag / pow(omegaMag, 2.0) / 2.0) / kMag * dot(normalize(k), normalize(omega)) / pow(2.0, 0.25) * exp(-pow(cutoff, 2.0) * kMag / 2.0);
+        return exp(-pow(G, 2.0) / kMag / pow(omegaMag, 2.0) / 2.0) / kMag * abs(dot(normalize(k), normalize(omega))) / pow(2.0, 0.25) * exp(-pow(cutoff, 2.0) * kMag / 2.0);
     } else {
         return 0.0;
     }
@@ -196,13 +197,13 @@ vec2 k;
 vec2 omega;
 
 void main() {
-    k = v_xy.xy * 2.0 * PI / vec2(u_scale_x, u_scale_y);
+    // k = v_xy.xy * 2.0 * PI / vec2(u_scale_x, u_scale_y);
+    k = v_xy.xy * PI * u_modes / u_scales;
 
-    omega = vec2(u_omega_x, u_omega_y);
-    pp = phillips( k, omega, omega.x * omega.x + omega.y * omega.y, u_cutoff);
+    pp = phillips( k, u_omega, u_omega.x * u_omega.x + u_omega.y * u_omega.y, u_cutoff);
 
-    re = pp * u_amp * gaussian(v_xy.xy - vec2(1.0 / PI, 1.0 / PI));
-    im = pp * u_amp * gaussian(v_xy.xy + vec2(1.0 / PI, 1.0 / PI));
+    re = pp * u_amp * gaussian(v_xy.xy - u_seed);
+    im = pp * u_amp * gaussian(v_xy.xy + u_seed);
 
     gl_FragColor = vec4(re, im, 0, 0);
 }
@@ -213,7 +214,7 @@ const conjugationShader = `
 
 precision highp float;
 
-uniform sampler2D u_input;
+uniform highp sampler2D u_input;
 
 varying vec4 v_xy;
 
@@ -230,8 +231,8 @@ void main() {
     kp = ( v_xy.xy * 0.5 + 0.5);
     km = (-v_xy.xy * 0.5 + 0.5);
 
-    hp = texture2D(u_input, kp + 0.0 / 256.0).xy;
-    hm = texture2D(u_input, km - 0.0 / 256.0).xy;
+    hp = 1.0 * texture2D(u_input, kp).xy / 2.0;
+    hm = 1.0 * texture2D(u_input, km).xy / 2.0;
     // hm = vec2(0, 0);
 
     gl_FragColor = vec4(hp + conjugate(hm), 1, 1);
@@ -244,7 +245,7 @@ const fs = `
 
 precision highp float;
 
-uniform sampler2D amplitudes;
+uniform highp sampler2D amplitudes;
 uniform vec2 modes;
 uniform vec2 scales;
 

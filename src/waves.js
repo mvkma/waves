@@ -121,7 +121,7 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
                       gl.RG16F,
                       gl.RG,
                       gl.FLOAT,
-                      gl.LINEAR,
+                      gl.NEAREST,
                       gl.CLAMP_TO_EDGE,
                       null),
     );
@@ -212,11 +212,11 @@ const main = function() {
 
     // Initalization
     const params = {
-        modes: { x: 256, y: 256 },
+        modes: { x: 512, y: 512 },
         scales: { x: 300, y: 200 },
         g: 9.81,
-        wind: [30.0, 0.0],
-        amp: 1 / 300 / 200,
+        wind: [30.0, 1.0],
+        amp: 1 / 256 / 50,
         cutoff: 0.0,
     };
 
@@ -235,7 +235,7 @@ const main = function() {
                       gl.RG16F,
                       gl.RG,
                       gl.FLOAT,
-                      gl.LINEAR,
+                      gl.NEAREST,
                       gl.CLAMP_TO_EDGE,
                       null),
     );
@@ -255,12 +255,10 @@ const main = function() {
     );
 
     gl.useProgram(initProg);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_size_x"), params.modes.x);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_size_y"), params.modes.y);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_scale_x"), params.scales.x);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_scale_y"), params.scales.y);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_omega_x"), params.wind[0]);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_omega_y"), params.wind[1]);
+    gl.uniform2f(gl.getUniformLocation(initProg, "u_modes"), params.modes.x, params.modes.y);
+    gl.uniform2f(gl.getUniformLocation(initProg, "u_scales"), params.scales.x, params.scales.y);
+    gl.uniform2f(gl.getUniformLocation(initProg, "u_omega"), params.wind[0], params.wind[1]);
+    gl.uniform2f(gl.getUniformLocation(initProg, "u_seed"), 1 / Math.PI, 1 / Math.PI);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_cutoff"), params.cutoff);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_amp"), params.amp);
     gl.bindFramebuffer(gl.FRAMEBUFFER, amplitudesFb);
@@ -281,18 +279,23 @@ const main = function() {
     initializeAmplitudes(tmpBuffer2, { ...params, windDirection: [params.wind[0] / Math.sqrt(windMag), params.wind[1] / Math.sqrt(windMag)], windMagnitude: windMag});
     console.log(tmpBuffer2);
 
+    // gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.output);
+    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, params.modes.x, params.modes.y, 0, gl.RG, gl.FLOAT, tmpBuffer2);
+
     fft(gl, fftProg, TEXTURE_UNITS.output, outputFb, params);
     gl.useProgram(outputProg);
     gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
     gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 0);
     gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.5);
-    gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 10);
+    gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 1);
+    gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordScale"), 1, 1);
 
     // gl.useProgram(outputProg);
     // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
     // gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 4);
     // gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.0);
     // gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 0.1);
+    // gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordScale"), 1, 1);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);

@@ -213,10 +213,10 @@ const main = function() {
     // Initalization
     const params = {
         modes: { x: 512, y: 512 },
-        scales: { x: 300, y: 200 },
+        scales: { x: 600, y: 400 },
         g: 9.81,
-        wind: [30.0, 1.0],
-        amp: 1 / 256 / 50,
+        wind: [0.0, 10.0],
+        amp: 1 / 512 / 20,
         cutoff: 0.0,
     };
 
@@ -258,7 +258,7 @@ const main = function() {
     gl.uniform2f(gl.getUniformLocation(initProg, "u_modes"), params.modes.x, params.modes.y);
     gl.uniform2f(gl.getUniformLocation(initProg, "u_scales"), params.scales.x, params.scales.y);
     gl.uniform2f(gl.getUniformLocation(initProg, "u_omega"), params.wind[0], params.wind[1]);
-    gl.uniform2f(gl.getUniformLocation(initProg, "u_seed"), 1 / Math.PI, 1 / Math.PI);
+    gl.uniform2f(gl.getUniformLocation(initProg, "u_seed"), Math.random(), Math.random());
     gl.uniform1f(gl.getUniformLocation(initProg, "u_cutoff"), params.cutoff);
     gl.uniform1f(gl.getUniformLocation(initProg, "u_amp"), params.amp);
     gl.bindFramebuffer(gl.FRAMEBUFFER, amplitudesFb);
@@ -271,13 +271,13 @@ const main = function() {
     gl.viewport(0, 0, params.modes.x, params.modes.y);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    let tmpBuffer = new Float32Array(params.modes.x * params.modes.y * 4);
-    gl.readPixels(0, 0, params.modes.x, params.modes.y, gl.RGBA, gl.FLOAT, tmpBuffer);
-    console.log(tmpBuffer);
-    let tmpBuffer2 = new Float32Array(params.modes.x * params.modes.y * 2);
-    let windMag = params.wind[0] * params.wind[0] + params.wind[1] * params.wind[1];
-    initializeAmplitudes(tmpBuffer2, { ...params, windDirection: [params.wind[0] / Math.sqrt(windMag), params.wind[1] / Math.sqrt(windMag)], windMagnitude: windMag});
-    console.log(tmpBuffer2);
+    // let tmpBuffer = new Float32Array(params.modes.x * params.modes.y * 4);
+    // gl.readPixels(0, 0, params.modes.x, params.modes.y, gl.RGBA, gl.FLOAT, tmpBuffer);
+    // console.log(tmpBuffer);
+    // let tmpBuffer2 = new Float32Array(params.modes.x * params.modes.y * 2);
+    // let windMag = params.wind[0] * params.wind[0] + params.wind[1] * params.wind[1];
+    // initializeAmplitudes(tmpBuffer2, { ...params, windDirection: [params.wind[0] / Math.sqrt(windMag), params.wind[1] / Math.sqrt(windMag)], windMagnitude: windMag});
+    // console.log(tmpBuffer2);
 
     // gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.output);
     // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, params.modes.x, params.modes.y, 0, gl.RG, gl.FLOAT, tmpBuffer2);

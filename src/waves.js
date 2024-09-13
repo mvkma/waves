@@ -11,6 +11,7 @@ import {
     vertexShader,
     greyscaleShader,
     conjugationShader,
+    timeEvolutionShader,
     fftShader,
     sampleInitShader,
     waveInitShader,
@@ -19,7 +20,8 @@ import {
 const TWOPI = 2.0 * Math.PI;
 
 const TEXTURE_UNITS = {
-    output: 4,
+    outputA: 3,
+    outputB: 4,
     amplitudes: 5,
     tempA: 6,
     tempB: 7,
@@ -142,25 +144,19 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
     let inputs = [TEXTURE_UNITS.tempB, TEXTURE_UNITS.tempA];
     let outputs = [fbA, fbB];
 
-    // let tmpBuffer = new Float32Array(params.modes.x * params.modes.y * 4);
-
     let k = Math.log2(params.modes.x);
 
-    console.log(`i = 0, subsize = 1`);
+    // console.log(`i = 0, subsize = 1`);
     fftStep(gl, prog, inputTextureUnit, fbA, 2**k, 1, 0);
 
     for (let i = 1; i < 2 * k - 1; i++) {
         let subSize = Math.pow(2, i % k);
-        console.log(`i = ${i}, subsize = ${subSize}`);
+        // console.log(`i = ${i}, subsize = ${subSize}`);
 
         fftStep(gl, prog, inputs[i % 2], outputs[i % 2], 2**k, subSize, i >= k ? 1 : 0);
-        // gl.readPixels(0, 0, params.modes.x, params.modes.y, gl.RGBA, gl.FLOAT, tmpBuffer);
-        // for (let j = 0; j < 4; j++) {
-        //     console.log(tmpBuffer.slice(j * 4 * 4, j * 4 * 4 + 4));
-        // } 
     }
 
-    console.log(`i = ${2 * k - 1}, subsize = ${2**(k-1)}`);
+    // console.log(`i = ${2 * k - 1}, subsize = ${2**(k-1)}`);
     let input = ((2 * k) % 2 === 0) ? inputs[1] : inputs[0];
     fftStep(gl, prog, input, outputBuffer, 2**k, 2**(k - 1), 1);
 }
@@ -185,6 +181,11 @@ const main = function() {
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
         compileShader(gl, conjugationShader, gl.FRAGMENT_SHADER),
+    );
+    const timeEvolutionProgram = createProgram(
+        gl,
+        compileShader(gl, vertexShader, gl.VERTEX_SHADER),
+        compileShader(gl, timeEvolutionShader, gl.FRAGMENT_SHADER),
     );
     const fftProg = createProgram(
         gl,
@@ -226,10 +227,10 @@ const main = function() {
     console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
     console.log(`(omegaMag / g) / dy = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
 
-    var outputFb = createFramebuffer(
+    var outputAFb = createFramebuffer(
         gl,
         createTexture(gl,
-                      TEXTURE_UNITS.output,
+                      TEXTURE_UNITS.outputA,
                       params.modes.x,
                       params.modes.y,
                       gl.RG16F,
@@ -239,6 +240,21 @@ const main = function() {
                       gl.CLAMP_TO_EDGE,
                       null),
     );
+
+    var outputBFb = createFramebuffer(
+        gl,
+        createTexture(gl,
+                      TEXTURE_UNITS.outputB,
+                      params.modes.x,
+                      params.modes.y,
+                      gl.RG16F,
+                      gl.RG,
+                      gl.FLOAT,
+                      gl.NEAREST,
+                      gl.CLAMP_TO_EDGE,
+                      null),
+    );
+
 
     var amplitudesFb = createFramebuffer(
         gl,
@@ -265,98 +281,54 @@ const main = function() {
     gl.viewport(0, 0, params.modes.x, params.modes.y);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    gl.useProgram(conjugationProg);
-    gl.uniform1i(gl.getUniformLocation(conjugationProg, "u_input"), TEXTURE_UNITS.amplitudes);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, outputFb);
-    gl.viewport(0, 0, params.modes.x, params.modes.y);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-    // let tmpBuffer = new Float32Array(params.modes.x * params.modes.y * 4);
-    // gl.readPixels(0, 0, params.modes.x, params.modes.y, gl.RGBA, gl.FLOAT, tmpBuffer);
-    // console.log(tmpBuffer);
-    // let tmpBuffer2 = new Float32Array(params.modes.x * params.modes.y * 2);
-    // let windMag = params.wind[0] * params.wind[0] + params.wind[1] * params.wind[1];
-    // initializeAmplitudes(tmpBuffer2, { ...params, windDirection: [params.wind[0] / Math.sqrt(windMag), params.wind[1] / Math.sqrt(windMag)], windMagnitude: windMag});
-    // console.log(tmpBuffer2);
-
-    // gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.output);
-    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, params.modes.x, params.modes.y, 0, gl.RG, gl.FLOAT, tmpBuffer2);
-
-    fft(gl, fftProg, TEXTURE_UNITS.output, outputFb, params);
-    gl.useProgram(outputProg);
-    gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
-    gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 0);
-    gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.5);
-    gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 1);
-    gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordscale"), 1, 1);
-    gl.uniform2f(gl.getUniformLocation(outputProg, "u_modes"), params.modes.x, params.modes.y);
-
-    // gl.useProgram(outputProg);
-    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
-    // gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 4);
-    // gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.0);
-    // gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 0.1);
-    // gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordScale"), 1, 1);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-    // let com, som, ii, jj, om;
-    // let h0p, h0m, h1p, h1m;
-    // let n, m;
-
-    // var t = 0.0;
-    // var amplitudes = initialAmplitudes.slice();
-    // var k = new Float32Array({length: 2});
-
-    // var amplitudesBuffer = gl.createTexture();
-    // gl.bindTexture(gl.TEXTURE_2D, amplitudesBuffer);
-    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    // gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    // gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-    // gl.uniform2f(modesLoc, params.modes.x, params.modes.y);
-    // gl.uniform2f(scalesLoc, params.scales.x, params.scales.y);
-
+    let t = 0.0;
     const render = function() {
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, params.modes.x, params.modes.y, 0, gl.RG, gl.FLOAT, amplitudes);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        // TODO: Probably no need to run this every time
+        gl.useProgram(conjugationProg);
+        gl.uniform1i(gl.getUniformLocation(conjugationProg, "u_input"), TEXTURE_UNITS.amplitudes);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, outputAFb);
+        gl.viewport(0, 0, params.modes.x, params.modes.y);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        for (let j = 0; j < params.modes.y; j++){
-            jj = params.modes.y - 1 - j;
-            n = j / (params.modes.y - 1) * 2 - 1;
-            k[1] = TWOPI * n / params.scales.y;
+        gl.useProgram(timeEvolutionProgram);
+        gl.uniform1i(gl.getUniformLocation(timeEvolutionProgram, "u_input"), TEXTURE_UNITS.outputA);
+        gl.uniform2f(gl.getUniformLocation(timeEvolutionProgram, "u_modes"), params.modes.x, params.modes.y);
+        gl.uniform2f(gl.getUniformLocation(timeEvolutionProgram, "u_scales"), params.scales.x, params.scales.y);
+        gl.uniform1f(gl.getUniformLocation(timeEvolutionProgram, "u_t"), t);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, outputBFb);
+        gl.viewport(0, 0, params.modes.x, params.modes.y);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-            for (let i = 0; i < 2 * params.modes.x; i += 2) {
-                ii = 2 * params.modes.x - 2 - i;
-                m = i / (2 * params.modes.x - 2) * 2 - 1;
-                k[0] = TWOPI * m / params.scales.x;
+        fft(gl, fftProg, TEXTURE_UNITS.outputB, outputBFb, params);
 
-                om = Math.sqrt(params.g * Math.sqrt(magnitude(k)));
-                com = Math.cos(om * t);
-                som = Math.sin(om * t);
+        gl.useProgram(outputProg);
+        gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.outputB);
+        gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 0);
+        gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.5);
+        gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 1);
+        gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordscale"), 1, 1);
+        gl.uniform2f(gl.getUniformLocation(outputProg, "u_modes"), params.modes.x, params.modes.y);
 
-                // TODO: slices
-                h0p = initialAmplitudes[j * 2 * params.modes.x + i + 0];
-                h1p = initialAmplitudes[j * 2 * params.modes.x + i + 1];
-                h0m = initialAmplitudes[jj * 2 * params.modes.x + ii + 0];
-                h1m = initialAmplitudes[jj * 2 * params.modes.x + ii + 1];
+        // gl.useProgram(outputProg);
+        // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
+        // gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 4);
+        // gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.0);
+        // gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 0.1);
+        // gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordScale"), 1, 1);
 
-                amplitudes[j * 2 * params.modes.x + i + 0] = (h0p + h0m) / 1.0 * com - (h1p + h1m) / 1.0 * som;
-                amplitudes[j * 2 * params.modes.x + i + 1] = (h1p - h1m) / 1.0 * com + (h0p - h0m) / 1.0 * som;
-            }
-        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        // console.log(amplitudes);
         t += 0.1;
-        if (t < 0.0) {
+        console.log(t);
+       if (t < 30.0) {
             window.setTimeout(() => window.requestAnimationFrame(render), 100);
         }
     }
 
-    // window.requestAnimationFrame(render);
+    window.requestAnimationFrame(render);
 }
 
 window.onload = function(ev) {

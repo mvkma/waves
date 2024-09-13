@@ -254,6 +254,55 @@ void main() {
 }
 `;
 
+const timeEvolutionShader = `
+#define PI 3.1415926538
+#define G 9.81
+
+precision highp float;
+
+uniform highp sampler2D u_input;
+uniform vec2 u_modes;
+uniform vec2 u_scales;
+uniform float u_t;
+
+varying vec4 v_xy;
+
+float omegat;
+vec2 phase;
+vec2 res;
+vec2 hp;
+vec2 hm;
+vec2 kp;
+vec2 km;
+vec2 k;
+
+vec2 mul_complex(vec2 a, vec2 b) {
+    return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
+}
+
+vec2 conjugate(vec2 a) {
+    return vec2(a[0], -a[1]);
+}
+
+void main() {
+    kp = ( v_xy.xy * 0.5 + 0.5);
+    km = (-v_xy.xy * 0.5 + 0.5);
+
+    k = v_xy.xy * PI * u_modes / u_scales;
+    omegat = sqrt(G * length(k)) * u_t;
+
+    hp = 1.0 * texture2D(u_input, kp).xy / 2.0;
+    hm = 1.0 * texture2D(u_input, km).xy / 2.0;
+
+    phase = vec2(cos(omegat), sin(omegat));
+
+    res = mul_complex(hp, phase) + mul_complex(conjugate(hm), conjugate(phase));
+
+    gl_FragColor = vec4(res, 1, 1);
+}
+
+`;
+
 const fs = `
 #define MODES_MAX 2048
 #define PI 3.1415926538
@@ -309,6 +358,7 @@ export {
     vertexShader,
     greyscaleShader,
     conjugationShader,
+    timeEvolutionShader,
     fftShader,
     sampleInitShader,
     waveInitShader,

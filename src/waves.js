@@ -1,6 +1,6 @@
 import {
+    Program,
     compileShader,
-    createProgram,
     createTexture,
     createFramebuffer,
     magnitude,
@@ -88,7 +88,7 @@ function initializeAmplitudes(amplitudes, params) {
 
 /**
  * @param {!WebGLRenderingContext} gl
- * @param {!WebGLProgram} prog
+ * @param {!Program} prog
  * @param {number} inputTextureUnit
  * @param {!WebGLFramebuffer} outputBuffer
  * @param {number} size
@@ -98,21 +98,21 @@ function initializeAmplitudes(amplitudes, params) {
 function fftStep(gl, prog, inputTextureUnit, outputBuffer, size, subSize, horizontal) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, outputBuffer);
     gl.viewport(0, 0, size, size);
-    gl.uniform1i(gl.getUniformLocation(prog, "u_input"), inputTextureUnit);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_subsize"), subSize);
-    gl.uniform1i(gl.getUniformLocation(prog, "u_horizontal"), horizontal);
+    gl.uniform1i(prog.uniforms["u_input"], inputTextureUnit);
+    gl.uniform1f(prog.uniforms["u_subsize"], subSize);
+    gl.uniform1i(prog.uniforms["u_horizontal"], horizontal);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
 /**
  * @param {!WebGLRenderingContext} gl
- * @param {!WebGLProgram} prog
+ * @param {!Program} prog
  * @param {number} inputTextureUnit
  * @param {object} params
  */
 function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
-    gl.useProgram(prog)
-    gl.uniform1f(gl.getUniformLocation(prog, "u_size"), params.modes.x);
+    gl.useProgram(prog.prog)
+    gl.uniform1f(prog.uniforms["u_size"], params.modes.x);
 
     let fbA = createFramebuffer(
         gl,
@@ -148,11 +148,9 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
 
     // console.log(`i = 0, subsize = 1`);
     fftStep(gl, prog, inputTextureUnit, fbA, 2**k, 1, 0);
-
     for (let i = 1; i < 2 * k - 1; i++) {
         let subSize = Math.pow(2, i % k);
         // console.log(`i = ${i}, subsize = ${subSize}`);
-
         fftStep(gl, prog, inputs[i % 2], outputs[i % 2], 2**k, subSize, i >= k ? 1 : 0);
     }
 
@@ -172,33 +170,33 @@ const main = function() {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     console.log(gl.canvas.width, gl.canvas.height, canvas.clientWidth, canvas.clientHeight);
 
-    const initProg = createProgram(
+    const initProg = new Program(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
         compileShader(gl, waveInitShader, gl.FRAGMENT_SHADER),
     );
-    const conjugationProg = createProgram(
+    const conjugationProg = new Program(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
         compileShader(gl, conjugationShader, gl.FRAGMENT_SHADER),
     );
-    const timeEvolutionProgram = createProgram(
+    const timeEvolutionProgram = new Program(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
         compileShader(gl, timeEvolutionShader, gl.FRAGMENT_SHADER),
     );
-    const fftProg = createProgram(
+    const fftProg = new Program(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
         compileShader(gl, fftShader, gl.FRAGMENT_SHADER)
     );
-    const outputProg = createProgram(
+    const outputProg = new Program(
         gl,
         compileShader(gl, vertexShader, gl.VERTEX_SHADER),
         compileShader(gl, greyscaleShader, gl.FRAGMENT_SHADER)
     );
 
-    gl.useProgram(outputProg);
+    gl.useProgram(outputProg.prog);
 
     var positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -207,7 +205,7 @@ const main = function() {
                   new Float32Array([-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0]),
                   gl.STATIC_DRAW);
 
-    gl.enableVertexAttribArray(gl.getAttribLocation(outputProg, "a_position"));
+    gl.enableVertexAttribArray(gl.getAttribLocation(outputProg.prog, "a_position"));
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(positionBuffer, 2, gl.FLOAT, false, 0, 0);
 
@@ -216,7 +214,7 @@ const main = function() {
         modes: { x: 512, y: 512 },
         scales: { x: 600, y: 400 },
         g: 9.81,
-        wind: [0.0, 20.0],
+        wind: [25.0, 0.0],
         amp: 1 / 512 / 50,
         cutoff: 0.0,
     };
@@ -270,13 +268,13 @@ const main = function() {
                       null),
     );
 
-    gl.useProgram(initProg);
-    gl.uniform2f(gl.getUniformLocation(initProg, "u_modes"), params.modes.x, params.modes.y);
-    gl.uniform2f(gl.getUniformLocation(initProg, "u_scales"), params.scales.x, params.scales.y);
-    gl.uniform2f(gl.getUniformLocation(initProg, "u_omega"), params.wind[0], params.wind[1]);
-    gl.uniform2f(gl.getUniformLocation(initProg, "u_seed"), Math.random(), Math.random());
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_cutoff"), params.cutoff);
-    gl.uniform1f(gl.getUniformLocation(initProg, "u_amp"), params.amp);
+    gl.useProgram(initProg.prog);
+    gl.uniform2f(initProg.uniforms["u_modes"], params.modes.x, params.modes.y);
+    gl.uniform2f(initProg.uniforms["u_scales"], params.scales.x, params.scales.y);
+    gl.uniform2f(initProg.uniforms["u_omega"], params.wind[0], params.wind[1]);
+    gl.uniform2f(initProg.uniforms["u_seed"], Math.random(), Math.random());
+    gl.uniform1f(initProg.uniforms["u_cutoff"], params.cutoff);
+    gl.uniform1f(initProg.uniforms["u_amp"], params.amp);
     gl.bindFramebuffer(gl.FRAMEBUFFER, amplitudesFb);
     gl.viewport(0, 0, params.modes.x, params.modes.y);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -285,37 +283,37 @@ const main = function() {
     let paused = true;
     const render = function() {
         // TODO: Probably no need to run this every time
-        gl.useProgram(conjugationProg);
-        gl.uniform1i(gl.getUniformLocation(conjugationProg, "u_input"), TEXTURE_UNITS.amplitudes);
+        gl.useProgram(conjugationProg.prog);
+        gl.uniform1i(conjugationProg.uniforms["u_input"], TEXTURE_UNITS.amplitudes);
         gl.bindFramebuffer(gl.FRAMEBUFFER, outputAFb);
         gl.viewport(0, 0, params.modes.x, params.modes.y);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        gl.useProgram(timeEvolutionProgram);
-        gl.uniform1i(gl.getUniformLocation(timeEvolutionProgram, "u_input"), TEXTURE_UNITS.outputA);
-        gl.uniform2f(gl.getUniformLocation(timeEvolutionProgram, "u_modes"), params.modes.x, params.modes.y);
-        gl.uniform2f(gl.getUniformLocation(timeEvolutionProgram, "u_scales"), params.scales.x, params.scales.y);
-        gl.uniform1f(gl.getUniformLocation(timeEvolutionProgram, "u_t"), t);
+        gl.useProgram(timeEvolutionProgram.prog);
+        gl.uniform1i(timeEvolutionProgram.uniforms["u_input"], TEXTURE_UNITS.outputA);
+        gl.uniform2f(timeEvolutionProgram.uniforms["u_modes"], params.modes.x, params.modes.y);
+        gl.uniform2f(timeEvolutionProgram.uniforms["u_scales"], params.scales.x, params.scales.y);
+        gl.uniform1f(timeEvolutionProgram.uniforms["u_t"], t);
         gl.bindFramebuffer(gl.FRAMEBUFFER, outputBFb);
         gl.viewport(0, 0, params.modes.x, params.modes.y);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         fft(gl, fftProg, TEXTURE_UNITS.outputB, outputBFb, params);
 
-        gl.useProgram(outputProg);
-        gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.outputB);
-        gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 0);
-        gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.5);
-        gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 1);
-        gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordscale"), 1, 1);
-        gl.uniform2f(gl.getUniformLocation(outputProg, "u_modes"), params.modes.x, params.modes.y);
+        gl.useProgram(outputProg.prog);
+        gl.uniform1i(outputProg.uniforms["u_input"], TEXTURE_UNITS.outputB);
+        gl.uniform1i(outputProg.uniforms["u_type"], 0);
+        gl.uniform1f(outputProg.uniforms["u_offset"], 0.5);
+        gl.uniform1f(outputProg.uniforms["u_scale"], 1);
+        gl.uniform2f(outputProg.uniforms["u_coordscale"], 1, 1);
+        gl.uniform2f(outputProg.uniforms["u_modes"], params.modes.x, params.modes.y);
 
-        // gl.useProgram(outputProg);
-        // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);
-        // gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 4);
-        // gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.0);
-        // gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 0.1);
-        // gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordScale"), 1, 1);
+        // gl.useProgram(outputProg.prog);
+        // gl.uniform1i(outputProg.uniforms["u_input"], TEXTURE_UNITS.output);
+        // gl.uniform1i(outputProg.uniforms["u_type"], 4);
+        // gl.uniform1f(outputProg.uniforms["u_offset"], 0.0);
+        // gl.uniform1f(outputProg.uniforms["u_scale"], 0.1);
+        // gl.uniform2f(outputProg.uniforms["u_coordScale"], 1, 1);
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

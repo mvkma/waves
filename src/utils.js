@@ -22,6 +22,34 @@ function compileShader(gl, source, type) {
  * @param {!WebGLShader} vertexShader
  * @param {!WebGLShader} fragmentShader
  *
+ * @return {Program}
+ */
+function Program(gl, vertexShader, fragmentShader) {
+    this.prog = gl.createProgram();
+    
+    gl.attachShader(this.prog, vertexShader);
+    gl.attachShader(this.prog, fragmentShader);
+
+    gl.linkProgram(this.prog);
+
+    if (!gl.getProgramParameter(this.prog, gl.LINK_STATUS)) {
+        throw "Failed to create program: " + gl.getProgramInfoLog(this.prog);
+    }
+
+    this.uniforms = {};
+    var n = gl.getProgramParameter(this.prog, gl.ACTIVE_UNIFORMS);
+    for (var i = 0; i < n; i++) {
+        var uniform = gl.getActiveUniform(this.prog, i);
+        var location = gl.getUniformLocation(this.prog, uniform.name);
+        this.uniforms[uniform.name] = location;
+    }
+}
+
+/**
+ * @param {!WebGLRenderingContext} gl
+ * @param {!WebGLShader} vertexShader
+ * @param {!WebGLShader} fragmentShader
+ *
  * @return {!WebGLProgram}
  */
 function createProgram(gl, vertexShader, fragmentShader) {
@@ -104,4 +132,4 @@ function dot(a, b) {
     return d;
 }
 
-export { compileShader, createProgram, createTexture, createFramebuffer, magnitude, dot };
+export { Program, compileShader, createTexture, createFramebuffer, magnitude, dot };

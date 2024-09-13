@@ -234,14 +234,24 @@ uniform highp sampler2D u_input;
 
 varying vec4 v_xy;
 
-vec2 conjugate(vec2 a) {
-    return vec2(a[0], -a[1]);
-}
-
+vec2 phase;
+vec2 res;
 vec2 hp;
 vec2 hm;
 vec2 kp;
 vec2 km;
+
+vec2 mul_complex(vec2 a, vec2 b) {
+    return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
+}
+
+vec2 conjugate(vec2 a) {
+    return vec2(a[0], -a[1]);
+}
+
+float random(vec2 v) {
+    return fract(sin(dot(v.xy, vec2(12.9898,78.233))) * 43758.5453123) * 0.5 + 0.5;
+}
 
 void main() {
     kp = ( v_xy.xy * 0.5 + 0.5);
@@ -250,7 +260,11 @@ void main() {
     hp = 1.0 * texture2D(u_input, kp).xy / 2.0;
     hm = 1.0 * texture2D(u_input, km).xy / 2.0;
 
-    gl_FragColor = vec4(hp + conjugate(hm), 1, 1);
+    // Initialize with random phases
+    phase = vec2(cos(PI * random(kp)), sin(PI * random(kp)));
+    res = mul_complex(hp, phase) + mul_complex(conjugate(hm), conjugate(phase));
+
+    gl_FragColor = vec4(res, 1, 1);
 }
 `;
 

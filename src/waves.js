@@ -282,6 +282,7 @@ const main = function() {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     let t = 0.0;
+    let paused = true;
     const render = function() {
         // TODO: Probably no need to run this every time
         gl.useProgram(conjugationProg);
@@ -322,13 +323,20 @@ const main = function() {
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         t += 0.1;
-        console.log(t);
-       if (t < 30.0) {
+        // console.log(t);
+        if (!paused) {
             window.setTimeout(() => window.requestAnimationFrame(render), 100);
         }
     }
 
-    window.requestAnimationFrame(render);
+    window.addEventListener("keyup", function (ev) {
+        if (ev.key === " ") {
+            paused = !paused;
+            if (!paused) {
+                window.requestAnimationFrame(render);
+            }
+        }
+    });
 }
 
 window.onload = function(ev) {

@@ -40,7 +40,10 @@ void main() {
 
     phase = -PI * (floor(texcoord.x * u_modes.x) / u_modes.x + floor(texcoord.y * u_modes.y) / u_modes.y);
     // phase = 0.0;
-    value = vec4(mul_complex(value.xy, vec2(cos(phase), sin(phase))), value.zw);
+    value = vec4(
+        mul_complex(value.xy, vec2(cos(phase), sin(phase))),
+        mul_complex(value.zw, vec2(cos(phase), sin(phase)))
+    );
 
     if (u_type == 0) {
         h = value[0];
@@ -86,10 +89,11 @@ float ix_even; // [0, u_size / 2]
 float ix_odd;  // [u_size / 2, u_size]
 float jx;      // [0, u_size]
 
-vec2 even;
-vec2 odd;
+vec4 even;
+vec4 odd;
 vec2 twiddle;
 vec2 res;
+vec2 dis;
 vec2 offset;
 
 vec2 mul_complex(vec2 a, vec2 b) {
@@ -115,18 +119,22 @@ void main() {
 
     offset = vec2(0.0, 0.0);
     if (u_horizontal == 1) {
-        even = texture2D(u_input, (vec2(ix_even, jx) + offset) / u_size).rg;
-        odd  = texture2D(u_input, (vec2(ix_odd , jx) + offset) / u_size).rg;
+        even = texture2D(u_input, (vec2(ix_even, jx) + offset) / u_size).rgba;
+        odd  = texture2D(u_input, (vec2(ix_odd , jx) + offset) / u_size).rgba;
     } else {
-        even = texture2D(u_input, (vec2(jx, ix_even) + offset) / u_size).rg;
-        odd  = texture2D(u_input, (vec2(jx, ix_odd ) + offset) / u_size).rg;
+        even = texture2D(u_input, (vec2(jx, ix_even) + offset) / u_size).rgba;
+        odd  = texture2D(u_input, (vec2(jx, ix_odd ) + offset) / u_size).rgba;
     }
 
-    res = even + mul_complex(twiddle, odd);
+    res = even.xy + mul_complex(twiddle, odd.xy);
     arg_twiddle = -PI * (ix - u_size / 2.0);
     res = mul_complex(res, vec2(cos(arg_twiddle), sin(arg_twiddle)));
 
-    gl_FragColor = vec4(res, 0, 0);
+    dis = even.zw + mul_complex(twiddle, odd.zw);
+    arg_twiddle = -PI * (ix - u_size / 2.0);
+    dis = mul_complex(dis, vec2(cos(arg_twiddle), sin(arg_twiddle)));
+
+    gl_FragColor = vec4(res, dis);
 }
 `;
 
@@ -284,6 +292,7 @@ varying vec4 v_xy;
 float omegat;
 vec2 phase;
 vec2 res;
+vec2 dis;
 vec2 hp;
 vec2 hm;
 vec2 kp;
@@ -312,7 +321,9 @@ void main() {
 
     res = mul_complex(hp, phase) + mul_complex(conjugate(hm), conjugate(phase));
 
-    gl_FragColor = vec4(res, 1, 1);
+    dis = mul_complex(normalize(k).x * res, vec2(0, -1)) + normalize(k).y * res;
+
+    gl_FragColor = vec4(res, dis);
 }
 
 `;

@@ -56,8 +56,8 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
                       TEXTURE_UNITS.tempA,
                       params.modes.x,
                       params.modes.y,
-                      gl.RG16F,
-                      gl.RG,
+                      gl.RGBA16F,
+                      gl.RGBA,
                       gl.FLOAT,
                       gl.NEAREST,
                       gl.CLAMP_TO_EDGE,
@@ -69,8 +69,8 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
                       TEXTURE_UNITS.tempB,
                       params.modes.x,
                       params.modes.y,
-                      gl.RG16F,
-                      gl.RG,
+                      gl.RGBA16F,
+                      gl.RGBA,
                       gl.FLOAT,
                       gl.NEAREST,
                       gl.CLAMP_TO_EDGE,
@@ -155,8 +155,8 @@ const main = function() {
                       TEXTURE_UNITS.outputA,
                       params.modes.x,
                       params.modes.y,
-                      gl.RG16F,
-                      gl.RG,
+                      gl.RGBA16F,
+                      gl.RGBA,
                       gl.FLOAT,
                       gl.NEAREST,
                       gl.CLAMP_TO_EDGE,
@@ -169,8 +169,8 @@ const main = function() {
                       TEXTURE_UNITS.outputB,
                       params.modes.x,
                       params.modes.y,
-                      gl.RG16F,
-                      gl.RG,
+                      gl.RGBA16F,
+                      gl.RGBA,
                       gl.FLOAT,
                       gl.NEAREST,
                       gl.CLAMP_TO_EDGE,
@@ -204,6 +204,7 @@ const main = function() {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     let t = 0.0;
+    let channel = 0;
     let paused = true;
     const render = function() {
         // TODO: Probably no need to run this every time
@@ -224,6 +225,7 @@ const main = function() {
 
         gl.useProgram(outputProg.prog);
         gl.uniform1i(outputProg.uniforms["u_input"], TEXTURE_UNITS.outputB);
+        gl.uniform1i(outputProg.uniforms["u_type"], channel);
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
         // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -243,6 +245,8 @@ const main = function() {
             if (!paused) {
                 window.requestAnimationFrame(render);
             }
+        } else if (ev.key === "0" || ev.key === "1" || ev.key === "2" || ev.key === "3") {
+            channel = parseInt(ev.key);
         }
     });
 }

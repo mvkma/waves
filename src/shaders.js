@@ -17,15 +17,30 @@ precision highp float;
 uniform highp sampler2D u_input;
 uniform float u_scale;
 uniform float u_offset;
-uniform vec2 u_coordScale;
+
+uniform vec2 u_coordscale;
+uniform vec2 u_modes;
+
 uniform int u_type;
 
 varying vec4 v_xy; // [-1, 1]
 
 float h;
+float phase;
+vec4 value;
+vec2 texcoord;
+
+vec2 mul_complex(vec2 a, vec2 b) {
+    return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
+}
 
 void main() {
-    vec4 value = texture2D(u_input, vec2(v_xy.xy / u_coordScale * 0.5 + 0.5));
+    texcoord = vec2(v_xy.xy / u_coordscale * 0.5 + 0.5);
+    value = texture2D(u_input, vec2(v_xy.xy / u_coordscale * 0.5 + 0.5));
+
+    phase = -PI * (floor(texcoord.x * u_modes.x) / u_modes.x + floor(texcoord.y * u_modes.y) / u_modes.y);
+    // phase = 0.0;
+    value = vec4(mul_complex(value.xy, vec2(cos(phase), sin(phase))), value.zw);
 
     if (u_type == 0) {
         h = value[0];
@@ -108,8 +123,9 @@ void main() {
     }
 
     res = even + mul_complex(twiddle, odd);
-    arg_twiddle = -PI * (1.0 * ix + 0.0 * jx - 1.0 * u_size / 2.0);
+    arg_twiddle = -PI * (ix - u_size / 2.0);
     res = mul_complex(res, vec2(cos(arg_twiddle), sin(arg_twiddle)));
+
     gl_FragColor = vec4(res, 0, 0);
 }
 `;
@@ -233,7 +249,6 @@ void main() {
 
     hp = 1.0 * texture2D(u_input, kp).xy / 2.0;
     hm = 1.0 * texture2D(u_input, km).xy / 2.0;
-    // hm = vec2(0, 0);
 
     gl_FragColor = vec4(hp + conjugate(hm), 1, 1);
 }

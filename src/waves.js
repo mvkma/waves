@@ -215,8 +215,8 @@ const main = function() {
         modes: { x: 512, y: 512 },
         scales: { x: 600, y: 400 },
         g: 9.81,
-        wind: [0.0, 10.0],
-        amp: 1 / 512 / 20,
+        wind: [0.0, 20.0],
+        amp: 1 / 512 / 50,
         cutoff: 0.0,
     };
 
@@ -288,7 +288,8 @@ const main = function() {
     gl.uniform1i(gl.getUniformLocation(outputProg, "u_type"), 0);
     gl.uniform1f(gl.getUniformLocation(outputProg, "u_offset"), 0.5);
     gl.uniform1f(gl.getUniformLocation(outputProg, "u_scale"), 1);
-    gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordScale"), 1, 1);
+    gl.uniform2f(gl.getUniformLocation(outputProg, "u_coordscale"), 1, 1);
+    gl.uniform2f(gl.getUniformLocation(outputProg, "u_modes"), params.modes.x, params.modes.y);
 
     // gl.useProgram(outputProg);
     // gl.uniform1i(gl.getUniformLocation(outputProg, "u_input"), TEXTURE_UNITS.output);

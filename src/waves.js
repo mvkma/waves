@@ -1,10 +1,7 @@
 import {
     Program,
-    compileShader,
     createTexture,
     createFramebuffer,
-    magnitude,
-    dot
 } from "./utils.js";
 
 import {
@@ -17,8 +14,6 @@ import {
     waveInitShader,
 } from "./shaders.js";
 
-const TWOPI = 2.0 * Math.PI;
-
 const TEXTURE_UNITS = {
     outputA: 3,
     outputB: 4,
@@ -26,65 +21,6 @@ const TEXTURE_UNITS = {
     tempA: 6,
     tempB: 7,
 };
-
-/**
- * @param {Float32Array} k
- * @param {Float32Array} omega
- * @param {number} omegaMag
- * @param {number} g
- * @param {number} cutoff
- *
- * @return {number}
- */
-const phililipsSpectrum = function(k, omega, omegaMag, g, amp, cutoff) {
-    // exp(-1/(k L)^2) / k^4 |\hat{k} \dot \hat{\omega}|^2
-    // L = V^2 / g
-    const kMag = magnitude(k);
-    if (kMag > 0) {
-        return amp * Math.exp(-(g**2) / kMag / omegaMag**2 / 2) / kMag * dot(k.map(t => t / Math.sqrt(kMag)), omega) / Math.pow(2, 1/4) * Math.exp(-(cutoff**2) * kMag);
-    } else {
-        return 0;
-    }
-}
-
-function gaussian(mean, std) {
-    const u = 1 - Math.random();
-    const v = Math.random();
-    const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-    return z * std + mean;
-}
-
-/**
- * @param {Float32Array} amplitudes
- * @param {object} params
- *
- * @return
- */
-function initializeAmplitudes(amplitudes, params) {
-    let n, m, ii, jj;
-    let xir, xii, p;
-    let k = new Float32Array({length: 2});
-
-    for (let j = 0; j < params.modes.y; j++) {
-        jj = params.modes.y - 1 - j;
-        n = j / (params.modes.y - 1) * 2 - 1;
-        k[1] = TWOPI * n / params.scales.y;
-
-        for (let i = 0; i < 2 * params.modes.x; i += 2) {
-            ii = 2 * params.modes.x - 2 - i;
-            m = i / (2 * params.modes.x - 2) * 2 - 1;
-            k[0] = TWOPI * m / params.scales.x;
-
-            p = phililipsSpectrum(k, params.windDirection, params.windMagnitude, params.g, params.amp, params.cutoff);
-            xir = gaussian(0, 1) / 2;
-            xii = gaussian(0, 1) / 2;
-            amplitudes[j * 2 * params.modes.x + i + 0] += xir * p;
-            amplitudes[j * 2 * params.modes.x + i + 1] += xii * p;
-            amplitudes[jj * 2 * params.modes.x + ii + 0] += xir * p;
-            amplitudes[jj * 2 * params.modes.x + ii + 1] += -xii * p;
-        }
-    }
-}
 
 /**
  * @param {!WebGLRenderingContext} gl
@@ -170,38 +106,15 @@ const main = function() {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     console.log(gl.canvas.width, gl.canvas.height, canvas.clientWidth, canvas.clientHeight);
 
-    const initProg = new Program(
-        gl,
-        compileShader(gl, vertexShader, gl.VERTEX_SHADER),
-        compileShader(gl, waveInitShader, gl.FRAGMENT_SHADER),
-    );
-    const conjugationProg = new Program(
-        gl,
-        compileShader(gl, vertexShader, gl.VERTEX_SHADER),
-        compileShader(gl, conjugationShader, gl.FRAGMENT_SHADER),
-    );
-    const timeEvolutionProgram = new Program(
-        gl,
-        compileShader(gl, vertexShader, gl.VERTEX_SHADER),
-        compileShader(gl, timeEvolutionShader, gl.FRAGMENT_SHADER),
-    );
-    const fftProg = new Program(
-        gl,
-        compileShader(gl, vertexShader, gl.VERTEX_SHADER),
-        compileShader(gl, fftShader, gl.FRAGMENT_SHADER)
-    );
-    const outputProg = new Program(
-        gl,
-        compileShader(gl, vertexShader, gl.VERTEX_SHADER),
-        compileShader(gl, greyscaleShader, gl.FRAGMENT_SHADER)
-    );
-
-    gl.useProgram(outputProg.prog);
+    const initProg = new Program(gl, vertexShader, waveInitShader);
+    const conjugationProg = new Program(gl, vertexShader, conjugationShader);
+    const timeEvolutionProgram = new Program(gl, vertexShader, timeEvolutionShader);
+    const fftProg = new Program(gl, vertexShader, fftShader);
+    const outputProg = new Program(gl, vertexShader, greyscaleShader);
 
     var positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER,
-                  // new Float32Array([-1, -1, +1, -1, -1, +1, -1, +1, +1, -1, +1, +1,]),
                   new Float32Array([-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0]),
                   gl.STATIC_DRAW);
 
@@ -216,14 +129,25 @@ const main = function() {
         g: 9.81,
         wind: [25.0, 0.0],
         amp: 1 / 512 / 50,
-        cutoff: 0.0,
+        cutoff: 1.0,
     };
 
-    var omegaMag = magnitude(params.wind);
+    var omegaMag = params.wind[0] * params.wind[0] + params.wind[1] * params.wind[1];
     console.log(`dx = ${params.scales.x / params.modes.x}, dy = ${params.scales.y / params.modes.y}`);
     console.log(`omegaMag / g = ${omegaMag / params.g}`);
     console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
     console.log(`(omegaMag / g) / dy = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
+
+    gl.useProgram(outputProg.prog);
+    gl.uniform1i(outputProg.uniforms["u_type"], 0);
+    gl.uniform1f(outputProg.uniforms["u_offset"], 0.5);
+    gl.uniform1f(outputProg.uniforms["u_scale"], 1);
+    gl.uniform2f(outputProg.uniforms["u_coordscale"], 1, 1);
+    gl.uniform2f(outputProg.uniforms["u_modes"], params.modes.x, params.modes.y);
+
+    gl.useProgram(timeEvolutionProgram.prog);
+    gl.uniform2f(timeEvolutionProgram.uniforms["u_modes"], params.modes.x, params.modes.y);
+    gl.uniform2f(timeEvolutionProgram.uniforms["u_scales"], params.scales.x, params.scales.y);
 
     var outputAFb = createFramebuffer(
         gl,
@@ -291,8 +215,6 @@ const main = function() {
 
         gl.useProgram(timeEvolutionProgram.prog);
         gl.uniform1i(timeEvolutionProgram.uniforms["u_input"], TEXTURE_UNITS.outputA);
-        gl.uniform2f(timeEvolutionProgram.uniforms["u_modes"], params.modes.x, params.modes.y);
-        gl.uniform2f(timeEvolutionProgram.uniforms["u_scales"], params.scales.x, params.scales.y);
         gl.uniform1f(timeEvolutionProgram.uniforms["u_t"], t);
         gl.bindFramebuffer(gl.FRAMEBUFFER, outputBFb);
         gl.viewport(0, 0, params.modes.x, params.modes.y);
@@ -302,21 +224,9 @@ const main = function() {
 
         gl.useProgram(outputProg.prog);
         gl.uniform1i(outputProg.uniforms["u_input"], TEXTURE_UNITS.outputB);
-        gl.uniform1i(outputProg.uniforms["u_type"], 0);
-        gl.uniform1f(outputProg.uniforms["u_offset"], 0.5);
-        gl.uniform1f(outputProg.uniforms["u_scale"], 1);
-        gl.uniform2f(outputProg.uniforms["u_coordscale"], 1, 1);
-        gl.uniform2f(outputProg.uniforms["u_modes"], params.modes.x, params.modes.y);
-
-        // gl.useProgram(outputProg.prog);
-        // gl.uniform1i(outputProg.uniforms["u_input"], TEXTURE_UNITS.output);
-        // gl.uniform1i(outputProg.uniforms["u_type"], 4);
-        // gl.uniform1f(outputProg.uniforms["u_offset"], 0.0);
-        // gl.uniform1f(outputProg.uniforms["u_scale"], 0.1);
-        // gl.uniform2f(outputProg.uniforms["u_coordScale"], 1, 1);
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 

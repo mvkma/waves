@@ -19,56 +19,6 @@ function compileShader(gl, source, type) {
 
 /**
  * @param {!WebGLRenderingContext} gl
- * @param {!WebGLShader} vertexShader
- * @param {!WebGLShader} fragmentShader
- *
- * @return {Program}
- */
-function Program(gl, vertexShader, fragmentShader) {
-    this.prog = gl.createProgram();
-    
-    gl.attachShader(this.prog, vertexShader);
-    gl.attachShader(this.prog, fragmentShader);
-
-    gl.linkProgram(this.prog);
-
-    if (!gl.getProgramParameter(this.prog, gl.LINK_STATUS)) {
-        throw "Failed to create program: " + gl.getProgramInfoLog(this.prog);
-    }
-
-    this.uniforms = {};
-    var n = gl.getProgramParameter(this.prog, gl.ACTIVE_UNIFORMS);
-    for (var i = 0; i < n; i++) {
-        var uniform = gl.getActiveUniform(this.prog, i);
-        var location = gl.getUniformLocation(this.prog, uniform.name);
-        this.uniforms[uniform.name] = location;
-    }
-}
-
-/**
- * @param {!WebGLRenderingContext} gl
- * @param {!WebGLShader} vertexShader
- * @param {!WebGLShader} fragmentShader
- *
- * @return {!WebGLProgram}
- */
-function createProgram(gl, vertexShader, fragmentShader) {
-    var prog = gl.createProgram();
-
-    gl.attachShader(prog, vertexShader);
-    gl.attachShader(prog, fragmentShader);
-
-    gl.linkProgram(prog);
-
-    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-        throw "Failed to create program: " + gl.getProgramInfoLog(prog);
-    }
-
-    return prog;
-}
-
-/**
- * @param {!WebGLRenderingContext} gl
  * @param {!number} textureUnit
  * @param {!number} width
  * @param {!number} height
@@ -110,26 +60,31 @@ function createFramebuffer(gl, texture) {
 }
 
 /**
- * @param {Float32Array} vec
+ * @param {!WebGLRenderingContext} gl
+ * @param {!string} vertexShaderSrc
+ * @param {!string} fragmentShaderSrc
  *
- * @return number
+ * @return {Program}
  */
-function magnitude(vec) {
-    return dot(vec, vec);
-}
+function Program(gl, vertexShaderSrc, fragmentShaderSrc) {
+    this.prog = gl.createProgram();
 
-/**
- * @param {Float32Array} a
- * @param {Float32Array} b
- *
- * @return number
- */
-function dot(a, b) {
-    let d = 0;
-    for (let i = 0; i < a.length; i++) {
-        d += a[i] * b[i];
+    gl.attachShader(this.prog, compileShader(gl, vertexShaderSrc, gl.VERTEX_SHADER));
+    gl.attachShader(this.prog, compileShader(gl, fragmentShaderSrc, gl.FRAGMENT_SHADER));
+
+    gl.linkProgram(this.prog);
+
+    if (!gl.getProgramParameter(this.prog, gl.LINK_STATUS)) {
+        throw "Failed to create program: " + gl.getProgramInfoLog(this.prog);
     }
-    return d;
+
+    this.uniforms = {};
+    var n = gl.getProgramParameter(this.prog, gl.ACTIVE_UNIFORMS);
+    for (var i = 0; i < n; i++) {
+        var uniform = gl.getActiveUniform(this.prog, i);
+        var location = gl.getUniformLocation(this.prog, uniform.name);
+        this.uniforms[uniform.name] = location;
+    }
 }
 
-export { Program, compileShader, createTexture, createFramebuffer, magnitude, dot };
+export { Program, createTexture, createFramebuffer, };

@@ -9,6 +9,44 @@ void main() {
 }
 `;
 
+const vertexShader3D = `
+#define PI 3.1415926538
+
+precision highp float;
+
+attribute vec2 a_mappos;
+attribute vec4 a_vertexpos;
+
+uniform highp sampler2D u_displacements;
+uniform highp sampler2D u_normals;
+
+uniform mat4 u_projection;
+uniform mat4 u_view;
+
+varying vec2 v_mappos;
+varying vec3 v_normal;
+
+void main() {
+    // TODO: The entries in u_displacements have to be multiplied by the correct phase first
+    gl_Position = projection * view * (a_vertexpos + texture2D(u_displacements, a_mappos).zwx);
+    v_normal = mat3(view) * texture2D(u_normals, a_mappos);
+    v_mappos = a_mappos;
+}
+`;
+
+const oceanSurfaceShader3D = `
+#define PI 3.1415926538
+
+precision highp float;
+
+varying vec2 v_mappos;
+varying vec3 v_normal;
+
+void main() {
+    gl_FragColor = vec4(0, 0, 0.5, 1);
+}
+`;
+
 const greyscaleShader = `
 #define PI 3.1415926538
 
@@ -325,58 +363,9 @@ void main() {
 
     gl_FragColor = vec4(res, dis);
 }
-
 `;
 
-const fs = `
-#define MODES_MAX 2048
-#define PI 3.1415926538
-
-precision highp float;
-
-uniform highp sampler2D amplitudes;
-uniform vec2 modes;
-uniform vec2 scales;
-
-varying vec4 v_xy;
-
-vec2 amp;
-vec2 k;
-
-void main() {
-  float hr = 0.0;
-  float hi = 0.0;
-  float h = 0.0;
-  int M = int(modes[0]);
-  int N = int(modes[1]);
-
-  for (int j = 0; j < MODES_MAX; j++) {
-    if (j >= N) { break; }
-
-    for (int i = 0; i < MODES_MAX; i++) {
-      if (i >= M) { break; }
-
-      k = vec2(float(i), float(j)) / (modes - 1.0);
-      amp = vec2(texture2D(amplitudes, k));
-      k = (2.0 * k - 1.0) * scales * (2.0 * PI) / 2.0;
-      hr += amp[0] * cos(dot(k, v_xy.v_xy)) - amp[1] * sin(dot(k, v_xy.v_xy));
-      hi += amp[0] * sin(dot(k, v_xy.v_xy)) + amp[1] * cos(dot(k, v_xy.v_xy));
-    }
-  }
-
-  // h = sqrt(hr*hr + hi*hi);
-  h = hr;
-
-  h /= modes[0] * modes[1];
-  h /= sqrt(scales[0] * scales[1]);
-  // h *= 50.0; // arbitrary
-  h *= 0.5;
-  h += 0.5;
-
-  // h = texture2D(amplitudes, vec2((v_xy.x + 1.0) * 0.5, (v_xy.y + 1.0) * 0.5))[1] / 150.0;
-
-  gl_FragColor = vec4(h, h, h, 1);
-}
+const normalVecShader = `
 `;
 
 export {

@@ -25,6 +25,7 @@ uniform vec2 u_modes;
 uniform vec2 u_scales;
 
 varying vec2 v_mappos;
+varying vec3 v_normal;
 
 float phase;
 vec4 dis;
@@ -33,19 +34,26 @@ vec2 mul_complex(vec2 a, vec2 b) {
     return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
 }
 
+vec4 get_displacement(vec2 pos) {
+    vec4 res = texture2D(u_displacements, pos);
+    float arg = -PI * (floor(pos.x * u_modes.x) / u_modes.x + floor(pos.y * u_modes.y) / u_modes.y);
+    vec2 phase = vec2(cos(arg), sin(arg));
+
+    return vec4(mul_complex(res.xy, phase), mul_complex(res.zw, phase)).zwxy;
+}
+
 void main() {
-    dis = texture2D(u_displacements, a_mappos);
-
-    phase = -PI * (floor(a_mappos.x * u_modes.x) / u_modes.x + floor(a_mappos.y * u_modes.y) / u_modes.y);
-    dis = vec4(
-        mul_complex(dis.xy, vec2(cos(phase), sin(phase))),
-        mul_complex(dis.zw, vec2(cos(phase), sin(phase)))
-    );
-
-    // gl_Position = u_projection * u_view * vec4(a_vertexpos + dis.zwx, 1);
-    gl_Position = u_projection * u_view * vec4((a_vertexpos.xy + dis.zw) / u_scales * 2.0, -0.5 + dis.x / 5.0, 1);
-    gl_PointSize = 1.1;
+    dis = get_displacement(a_mappos);
+    gl_Position = u_projection * u_view * vec4((a_vertexpos.xy + dis.xy) / u_scales * 2.0, -0.5 + dis.z / 5.0, 1);
     v_mappos = a_mappos;
+
+    // TODO: verify that this is correct
+    vec3 vr = get_displacement(a_mappos + vec2( 1.0 / u_modes.x, 0)).xyz - dis.xyz + vec3( 2.0 / (u_modes.x - 1.0), 0, 0);
+    vec3 vl = get_displacement(a_mappos + vec2(-1.0 / u_modes.x, 0)).xyz - dis.xyz + vec3(-2.0 / (u_modes.x - 1.0), 0, 0);
+    vec3 vb = get_displacement(a_mappos + vec2(0,  1.0 / u_modes.y)).xyz - dis.xyz + vec3(0,  2.0 / (u_modes.y - 1.0), 0);
+    vec3 vt = get_displacement(a_mappos + vec2(0, -1.0 / u_modes.y)).xyz - dis.xyz + vec3(0, -2.0 / (u_modes.y - 1.0), 0);
+
+    v_normal = normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr));
 }
 `;
 
@@ -57,11 +65,15 @@ precision highp float;
 uniform highp sampler2D u_displacements;
 
 varying vec2 v_mappos;
+varying vec3 v_normal;
 
 vec3 normal;
 
 void main() {
-    gl_FragColor = vec4(0, 0.5, 0.5, 1);
+    // TODO: proper reflection and diffusion
+    vec3 color = vec3(0.1, 0.7, 0.9) * log(1.1 - dot(normalize(vec3(v_mappos, 0)), v_normal));
+
+    gl_FragColor = vec4(color, 0.8);
 }
 `;
 

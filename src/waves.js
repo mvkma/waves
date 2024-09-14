@@ -116,7 +116,7 @@ const main = function() {
         modes: { x: 512, y: 512 },
         scales: { x: 600, y: 400 },
         g: 9.81,
-        wind: [25.0, 0.0],
+        wind: [20.0, 0.0],
         amp: 1 / 512 / 50,
         cutoff: 1.0,
     };
@@ -165,9 +165,6 @@ const main = function() {
             indices3D[ind_ix + 5] = indices3D[ind_ix + 0];
         }
     }
-
-    console.log(positions3D);
-    console.log(indices3D);
 
     const position3DBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, position3DBuffer);
@@ -291,19 +288,19 @@ const main = function() {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, position3DBuffer);
         gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.vertexpos);
-        gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.vertexpos, 3, gl.FLOAT, false, 5 * 4, 2 * 4);
+        gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.vertexpos, 3, gl.FLOAT, false, 5 * Float32Array.BYTES_PER_ELEMENT, 2 * Float32Array.BYTES_PER_ELEMENT);
 
         gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.mappos);
-        gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.mappos, 2, gl.FLOAT, false, 5 * 4, 0);
+        gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.mappos, 2, gl.FLOAT, false, 5 * Float32Array.BYTES_PER_ELEMENT, 0);
 
         gl.useProgram(output3DProg.prog);
         gl.uniform1i(output3DProg.uniforms["u_displacements"], TEXTURE_UNITS.outputB);
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        // gl.enable(gl.DEPTH_TEST);
-        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.drawElements(gl.TRIANGLE, indices3D.length, gl.UNSIGNED_SHORT, 0);
+        //gl.enable(gl.DEPTH_TEST);
+        //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.drawElements(gl.TRIANGLES, indices3D.length, gl.UNSIGNED_SHORT, 0);
         // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         t += 0.1;

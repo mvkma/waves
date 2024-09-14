@@ -15,21 +15,36 @@ const vertexShader3D = `
 precision highp float;
 
 attribute vec2 a_mappos;
-attribute vec4 a_vertexpos;
+attribute vec3 a_vertexpos;
 
 uniform highp sampler2D u_displacements;
-uniform highp sampler2D u_normals;
 
 uniform mat4 u_projection;
 uniform mat4 u_view;
+uniform vec2 u_modes;
+uniform vec2 u_scales;
 
 varying vec2 v_mappos;
-varying vec3 v_normal;
+
+float phase;
+vec4 dis;
+
+vec2 mul_complex(vec2 a, vec2 b) {
+    return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
+}
 
 void main() {
-    // TODO: The entries in u_displacements have to be multiplied by the correct phase first
-    gl_Position = projection * view * (a_vertexpos + texture2D(u_displacements, a_mappos).zwx);
-    v_normal = mat3(view) * texture2D(u_normals, a_mappos);
+    dis = texture2D(u_displacements, a_mappos);
+
+    phase = -PI * (floor(a_mappos.x * u_modes.x) / u_modes.x + floor(a_mappos.y * u_modes.y) / u_modes.y);
+    dis = vec4(
+        mul_complex(dis.xy, vec2(cos(phase), sin(phase))),
+        mul_complex(dis.zw, vec2(cos(phase), sin(phase)))
+    );
+
+    // gl_Position = u_projection * u_view * vec4(a_vertexpos + dis.zwx, 1);
+    gl_Position = u_projection * u_view * vec4((a_vertexpos.xy + dis.zw) / u_scales * 2.0, -0.5 + dis.x / 5.0, 1);
+    gl_PointSize = 1.1;
     v_mappos = a_mappos;
 }
 `;
@@ -39,11 +54,14 @@ const oceanSurfaceShader3D = `
 
 precision highp float;
 
+uniform highp sampler2D u_displacements;
+
 varying vec2 v_mappos;
-varying vec3 v_normal;
+
+vec3 normal;
 
 void main() {
-    gl_FragColor = vec4(0, 0, 0.5, 1);
+    gl_FragColor = vec4(0, 0.5, 0.5, 1);
 }
 `;
 
@@ -365,15 +383,14 @@ void main() {
 }
 `;
 
-const normalVecShader = `
-`;
-
 export {
     vertexShader,
+    vertexShader3D,
     greyscaleShader,
     conjugationShader,
     timeEvolutionShader,
     fftShader,
+    oceanSurfaceShader3D,
     sampleInitShader,
     waveInitShader,
 };

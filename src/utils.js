@@ -63,14 +63,19 @@ function createFramebuffer(gl, texture) {
  * @param {!WebGLRenderingContext} gl
  * @param {!string} vertexShaderSrc
  * @param {!string} fragmentShaderSrc
+ * @param {!object} attribBindings
  *
  * @return {Program}
  */
-function Program(gl, vertexShaderSrc, fragmentShaderSrc) {
+function Program(gl, vertexShaderSrc, fragmentShaderSrc, attribBindings) {
     this.prog = gl.createProgram();
 
     gl.attachShader(this.prog, compileShader(gl, vertexShaderSrc, gl.VERTEX_SHADER));
     gl.attachShader(this.prog, compileShader(gl, fragmentShaderSrc, gl.FRAGMENT_SHADER));
+
+    for (let attrib in attribBindings) {
+        gl.bindAttribLocation(this.prog, attribBindings[attrib], attrib);
+    }
 
     gl.linkProgram(this.prog);
 

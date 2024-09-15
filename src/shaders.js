@@ -44,14 +44,14 @@ vec4 get_displacement(vec2 pos) {
 
 void main() {
     dis = get_displacement(a_mappos);
-    gl_Position = u_projection * u_view * vec4((a_vertexpos.xy + dis.xy) / u_scales * 2.0, -0.5 + dis.z / 5.0, 1);
+    gl_Position = u_projection * u_view * vec4((a_vertexpos.xy + 1.0 * dis.xy) / u_scales * 2.0, -0.5 + dis.z / 5.0, 1);
     v_mappos = a_mappos;
 
     // TODO: verify that this is correct
-    vec3 vr = get_displacement(a_mappos + vec2( 1.0 / u_modes.x, 0)).xyz - dis.xyz + vec3( 2.0 / (u_modes.x - 1.0), 0, 0);
-    vec3 vl = get_displacement(a_mappos + vec2(-1.0 / u_modes.x, 0)).xyz - dis.xyz + vec3(-2.0 / (u_modes.x - 1.0), 0, 0);
-    vec3 vb = get_displacement(a_mappos + vec2(0,  1.0 / u_modes.y)).xyz - dis.xyz + vec3(0,  2.0 / (u_modes.y - 1.0), 0);
-    vec3 vt = get_displacement(a_mappos + vec2(0, -1.0 / u_modes.y)).xyz - dis.xyz + vec3(0, -2.0 / (u_modes.y - 1.0), 0);
+    vec3 vr = get_displacement(a_mappos + vec2( 0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3( 2.0 / (u_modes.x - 1.0), 0, 0);
+    vec3 vl = get_displacement(a_mappos + vec2(-0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3(-2.0 / (u_modes.x - 1.0), 0, 0);
+    vec3 vb = get_displacement(a_mappos + vec2(0,  0.5 / u_modes.y)).xyz - dis.xyz + vec3(0,  2.0 / (u_modes.y - 1.0), 0);
+    vec3 vt = get_displacement(a_mappos + vec2(0, -0.5 / u_modes.y)).xyz - dis.xyz + vec3(0, -2.0 / (u_modes.y - 1.0), 0);
 
     v_normal = normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr));
 }
@@ -64,16 +64,35 @@ precision highp float;
 
 uniform highp sampler2D u_displacements;
 
+uniform float u_n1;
+uniform float u_n2;
+uniform float u_diffuse;
+uniform vec3 u_lightdir;
+uniform vec3 u_camerapos;
+uniform vec3 u_skycolor;
+uniform vec3 u_watercolor;
+uniform vec3 u_aircolor;
+
 varying vec2 v_mappos;
 varying vec3 v_normal;
 
-vec3 normal;
+float costh;
+float refl0;
+float refl;
+float dist;
+vec3 color;
 
 void main() {
-    // TODO: proper reflection and diffusion
-    vec3 color = vec3(0.1, 0.7, 0.9) * log(1.1 - dot(normalize(vec3(v_mappos, 0)), v_normal));
+    // Schlick's approximation
+    costh = dot(normalize(u_lightdir), v_normal);
+    refl0 = pow((u_n1 - u_n2) / (u_n1 + u_n2), 2.0);
+    refl = refl0 + (1.0 - refl0) * pow(1.0 - costh, 5.0);
 
-    gl_FragColor = vec4(color, 0.8);
+    dist = exp(-u_diffuse * length(vec3(v_mappos, 0) - u_camerapos));
+
+    color = dist * (refl * u_skycolor + (1.0 - refl) * u_watercolor) + (1.0 - dist) * u_aircolor;
+
+    gl_FragColor = vec4(color, 1.0);
 }
 `;
 

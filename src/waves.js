@@ -189,10 +189,18 @@ const main = function() {
     // TODO: correct matrices
     gl.uniform2f(output3DProg.uniforms["u_modes"], params.modes.x, params.modes.y);
     gl.uniform2f(output3DProg.uniforms["u_scales"], params.scales.x, params.scales.y);
+    gl.uniform1f(output3DProg.uniforms["u_n1"], 1.0);
+    gl.uniform1f(output3DProg.uniforms["u_n2"], 1.34);
+    gl.uniform1f(output3DProg.uniforms["u_diffuse"], 0.95);
+    gl.uniform3f(output3DProg.uniforms["u_lightdir"], 0.0, 30.0, 100.0);
+    gl.uniform3f(output3DProg.uniforms["u_camerapos"], 0.5, 0.5, 3.0);
+    gl.uniform3f(output3DProg.uniforms["u_skycolor"], 80 / 255, 160 / 255, 220 / 255);
+    gl.uniform3f(output3DProg.uniforms["u_watercolor"], 0.1, 0.2, 0.3);
+    gl.uniform3f(output3DProg.uniforms["u_aircolor"], 0.10, 0.10, 0.40);
     gl.uniformMatrix4fv(output3DProg.uniforms["u_projection"], false, new Float32Array([
         0.6666666865348816, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0202020406723022, -1, 0, 0, -0.20202019810676575, 0,
     ]));
-    let ang_x = -Math.PI / 180 * 60;
+    let ang_x = -Math.PI / 180 * 30;
     gl.uniformMatrix4fv(output3DProg.uniforms["u_view"], false, new Float32Array([
         1, 0, 0, 0, 0, Math.cos(ang_x), Math.sin(ang_x), 0, 0, -Math.sin(ang_x), Math.cos(ang_x), 0, 0, 0, 0, 1,
     ]));

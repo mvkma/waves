@@ -17,6 +17,8 @@ import {
     waveInitShader,
 } from "./shaders.js";
 
+import * as mat from "./matrices.js";
+
 const TEXTURE_UNITS = {
     outputA: 3,
     outputB: 4,

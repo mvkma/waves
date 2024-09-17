@@ -91,6 +91,40 @@ const rotationZ = function (radians) {
     ]);
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ *
+ * @returns {Float32Array}
+ */
+const translation = function (x, y, z) {
+    return new Float32Array([
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+          x,   y,   z, 1.0,
+    ]);
+}
+
+/**
+ * @param {number} r
+ * @param {number} l
+ * @param {number} t
+ * @param {number} b
+ * @param {number} n
+ * @param {number} f
+ *
+ * @returns {Float32Array}
+ */
+const perspectiveProjection = function (r, l, t, b, n, f) {
+    return new Float32Array([
+        2.0 * n / (r - l), 0.0, 0.0, 0.0,
+        0.0, 2.0 * n / (t - b), 0.0, 0.0,
+        (r + l) / (r - l), (t + b) / (t - b), -(f + n) / (f - n), -1.0,
+        0.0, 0.0, -2.0 * f * n / (f - n), 0.0
+    ]);
+}
 
 /**
  * @param {Float32Array} matrix
@@ -122,4 +156,27 @@ const rotateZ = function (matrix, radians) {
     return multiply(matrix, rotationZ(radians));
 }
 
-export { identity, multiply, rotateX, rotateY, rotateZ, rotationX, rotationY, rotationZ };
+/**
+ * @param {Float32Array} matrix
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ *
+ * @returns {Float32Array}
+ */
+const translate = function (matrix, x, y, z) {
+    return multiply(matrix, translation(x, y, z));
+}
+
+export {
+    identity,
+    multiply,
+    rotateX,
+    rotateY,
+    rotateZ,
+    translate,
+    rotationX,
+    rotationY,
+    rotationZ,
+    translation,
+};

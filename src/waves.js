@@ -1,5 +1,6 @@
 import {
     Program,
+    SimulationParameters,
     createTexture,
     createFramebuffer,
 } from "./utils.js";
@@ -56,14 +57,14 @@ function fftStep(gl, prog, inputTextureUnit, outputBuffer, size, subSize, horizo
  */
 function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
     gl.useProgram(prog.prog)
-    gl.uniform1f(prog.uniforms["u_size"], params.modes.x);
+    gl.uniform1f(prog.uniforms["u_size"], params.modes);
 
     let fbA = createFramebuffer(
         gl,
         createTexture(gl,
                       TEXTURE_UNITS.tempA,
-                      params.modes.x,
-                      params.modes.y,
+                      params.modes,
+                      params.modes,
                       gl.RGBA16F,
                       gl.RGBA,
                       gl.FLOAT,
@@ -75,8 +76,8 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
         gl,
         createTexture(gl,
                       TEXTURE_UNITS.tempB,
-                      params.modes.x,
-                      params.modes.y,
+                      params.modes,
+                      params.modes,
                       gl.RGBA16F,
                       gl.RGBA,
                       gl.FLOAT,
@@ -88,7 +89,7 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
     let inputs = [TEXTURE_UNITS.tempB, TEXTURE_UNITS.tempA];
     let outputs = [fbA, fbB];
 
-    let k = Math.log2(params.modes.x);
+    let k = Math.log2(params.modes);
 
     // console.log(`i = 0, subsize = 1`);
     fftStep(gl, prog, inputTextureUnit, fbA, 2**k, 1, 0);
@@ -105,27 +106,20 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
 
 const main = function() {
     const gl = document.querySelector("canvas").getContext("webgl2");
-    const ext = gl.getExtension("EXT_color_buffer_float");
-    if (!ext) {
+    if(!gl.getExtension("EXT_color_buffer_float")) {
         console.log("extension for rendering to float textures does not load");
         return;
     }
 
     // Initalization
-    const params = {
-        modes: { x: 512, y: 512 },
-        scales: { x: 600, y: 400 },
-        g: 9.81,
-        wind: [20.0, 0.0],
-        amp: 1 / 512 / 50,
-        cutoff: 1.0,
-    };
+    const params = new SimulationParameters();
+    console.log(params);
 
-    var omegaMag = params.wind[0] * params.wind[0] + params.wind[1] * params.wind[1];
-    console.log(`dx = ${params.scales.x / params.modes.x}, dy = ${params.scales.y / params.modes.y}`);
+    const omegaMag = params.wind_x * params.wind_x + params.wind_y * params.wind_y;
+    console.log(`dx = ${params.scale / params.modes}, dy = ${params.scale / params.modes}`);
     console.log(`omegaMag / g = ${omegaMag / params.g}`);
-    console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
-    console.log(`(omegaMag / g) / dy = ${omegaMag / params.g / (params.scales.y / params.modes.y)}`);
+    console.log(`(omegaMag / g) / dx = ${omegaMag / params.g / (params.scale / params.modes)}`);
+    console.log(`(omegaMag / g) / dy = ${omegaMag / params.g / (params.scale / params.modes)}`);
 
     // WebGL setup
     const bindings2d = { "a_position": ATTRIBUTE_LOCATIONS["position"] };
@@ -134,34 +128,36 @@ const main = function() {
         "a_vertexpos": ATTRIBUTE_LOCATIONS["vertexpos"]
     };
 
-    const initProg = new Program(gl, vertexShader, waveInitShader, bindings2d);
-    const conjugationProg = new Program(gl, vertexShader, conjugationShader, bindings2d);
-    const timeEvolutionProgram = new Program(gl, vertexShader, timeEvolutionShader, bindings2d);
-    const fftProg = new Program(gl, vertexShader, fftShader, bindings2d);
-    const outputProg = new Program(gl, vertexShader, greyscaleShader, bindings2d);
-    const output3DProg = new Program(gl, vertexShader3D, oceanSurfaceShader3D, bindings3d);
+    const programs = {
+        init: new Program(gl, vertexShader, waveInitShader, bindings2d),
+        conjugation: new Program(gl, vertexShader, conjugationShader, bindings2d),
+        timeEvolution: new Program(gl, vertexShader, timeEvolutionShader, bindings2d),
+        fft: new Program(gl, vertexShader, fftShader, bindings2d),
+        output: new Program(gl, vertexShader, greyscaleShader, bindings2d),
+        output3D: new Program(gl, vertexShader3D, oceanSurfaceShader3D, bindings3d),
+    };
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0]), gl.STATIC_DRAW);
 
-    let positions3D = new Float32Array({length: 5 * params.modes.x * params.modes.y / 4});
-    let indices3D = new Uint16Array({length: 6 * (params.modes.x / 2 - 1) * (params.modes.y / 2 - 1)});
-    for (let y = 0; y < params.modes.y / 2; y++) {
-        for (let x = 0; x < params.modes.x / 2; x++) {
-            let pos_ix = (y * params.modes.x / 2 + x) * 5;
-            positions3D[pos_ix + 0] = x / (params.modes.x / 2 - 1);
-            positions3D[pos_ix + 1] = y / (params.modes.y / 2 - 1);
-            positions3D[pos_ix + 2] = x / (params.modes.x / 2 - 1) * params.scales.x - params.scales.x / 2;
-            positions3D[pos_ix + 3] = y / (params.modes.y / 2 - 1) * params.scales.y - params.scales.y / 2;
+    let positions3D = new Float32Array({length: 5 * params.modes * params.modes / 4});
+    let indices3D = new Uint16Array({length: 6 * (params.modes / 2 - 1) * (params.modes / 2 - 1)});
+    for (let y = 0; y < params.modes / 2; y++) {
+        for (let x = 0; x < params.modes / 2; x++) {
+            let pos_ix = (y * params.modes / 2 + x) * 5;
+            positions3D[pos_ix + 0] = x / (params.modes / 2 - 1);
+            positions3D[pos_ix + 1] = y / (params.modes / 2 - 1);
+            positions3D[pos_ix + 2] = x / (params.modes / 2 - 1) * params.scale - params.scale / 2;
+            positions3D[pos_ix + 3] = y / (params.modes / 2 - 1) * params.scale - params.scale / 2;
             positions3D[pos_ix + 4] = 0.0;
 
-            let ind_ix = (y * (params.modes.x / 2 - 1) + x) * 6;
-            indices3D[ind_ix + 0] = y * params.modes.x / 2 + x;
-            indices3D[ind_ix + 1] = (y + 1) * params.modes.x / 2 + x;
-            indices3D[ind_ix + 2] = (y + 1) * params.modes.x / 2 + x + 1;
+            let ind_ix = (y * (params.modes / 2 - 1) + x) * 6;
+            indices3D[ind_ix + 0] = y * params.modes / 2 + x;
+            indices3D[ind_ix + 1] = (y + 1) * params.modes / 2 + x;
+            indices3D[ind_ix + 2] = (y + 1) * params.modes / 2 + x + 1;
             indices3D[ind_ix + 3] = indices3D[ind_ix + 2];
-            indices3D[ind_ix + 4] = y * params.modes.x / 2 + x + 1;
+            indices3D[ind_ix + 4] = y * params.modes / 2 + x + 1;
             indices3D[ind_ix + 5] = indices3D[ind_ix + 0];
         }
     }
@@ -174,34 +170,34 @@ const main = function() {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices3DBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices3D, gl.STATIC_DRAW);
 
-    gl.useProgram(outputProg.prog);
-    gl.uniform1i(outputProg.uniforms["u_type"], 0);
-    gl.uniform1f(outputProg.uniforms["u_offset"], 0.5);
-    gl.uniform1f(outputProg.uniforms["u_scale"], 1);
-    gl.uniform2f(outputProg.uniforms["u_coordscale"], 1, 1);
-    gl.uniform2f(outputProg.uniforms["u_modes"], params.modes.x, params.modes.y);
+    gl.useProgram(programs.output.prog);
+    gl.uniform1i(programs.output.uniforms["u_type"], 0);
+    gl.uniform1f(programs.output.uniforms["u_offset"], 0.5);
+    gl.uniform1f(programs.output.uniforms["u_scale"], 1);
+    gl.uniform2f(programs.output.uniforms["u_coordscale"], 1, 1);
+    gl.uniform2f(programs.output.uniforms["u_modes"], params.modes, params.modes);
 
-    gl.useProgram(timeEvolutionProgram.prog);
-    gl.uniform2f(timeEvolutionProgram.uniforms["u_modes"], params.modes.x, params.modes.y);
-    gl.uniform2f(timeEvolutionProgram.uniforms["u_scales"], params.scales.x, params.scales.y);
+    gl.useProgram(programs.timeEvolution.prog);
+    gl.uniform2f(programs.timeEvolution.uniforms["u_modes"], params.modes, params.modes);
+    gl.uniform2f(programs.timeEvolution.uniforms["u_scales"], params.scale, params.scale);
 
-    gl.useProgram(output3DProg.prog);
+    gl.useProgram(programs.output3D.prog);
     // TODO: correct matrices
-    gl.uniform2f(output3DProg.uniforms["u_modes"], params.modes.x, params.modes.y);
-    gl.uniform2f(output3DProg.uniforms["u_scales"], params.scales.x, params.scales.y);
-    gl.uniform1f(output3DProg.uniforms["u_n1"], 1.0);
-    gl.uniform1f(output3DProg.uniforms["u_n2"], 1.34);
-    gl.uniform1f(output3DProg.uniforms["u_diffuse"], 0.95);
-    gl.uniform3f(output3DProg.uniforms["u_lightdir"], 0.0, 30.0, 100.0);
-    gl.uniform3f(output3DProg.uniforms["u_camerapos"], 0.5, 0.5, 3.0);
-    gl.uniform3f(output3DProg.uniforms["u_skycolor"], 80 / 255, 160 / 255, 220 / 255);
-    gl.uniform3f(output3DProg.uniforms["u_watercolor"], 0.1, 0.2, 0.3);
-    gl.uniform3f(output3DProg.uniforms["u_aircolor"], 0.10, 0.10, 0.40);
-    gl.uniformMatrix4fv(output3DProg.uniforms["u_projection"], false, new Float32Array([
+    gl.uniform2f(programs.output3D.uniforms["u_modes"], params.modes, params.modes);
+    gl.uniform2f(programs.output3D.uniforms["u_scales"], params.scale, params.scale);
+    gl.uniform1f(programs.output3D.uniforms["u_n1"], 1.0);
+    gl.uniform1f(programs.output3D.uniforms["u_n2"], 1.34);
+    gl.uniform1f(programs.output3D.uniforms["u_diffuse"], 0.95);
+    gl.uniform3f(programs.output3D.uniforms["u_lightdir"], 0.0, 30.0, 100.0);
+    gl.uniform3f(programs.output3D.uniforms["u_camerapos"], 0.5, 0.5, 3.0);
+    gl.uniform3f(programs.output3D.uniforms["u_skycolor"], 80 / 255, 160 / 255, 220 / 255);
+    gl.uniform3f(programs.output3D.uniforms["u_watercolor"], 0.1, 0.2, 0.3);
+    gl.uniform3f(programs.output3D.uniforms["u_aircolor"], 0.10, 0.10, 0.40);
+    gl.uniformMatrix4fv(programs.output3D.uniforms["u_projection"], false, new Float32Array([
         0.6666666865348816, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0202020406723022, -1, 0, 0, -0.20202019810676575, 0,
     ]));
     let ang_x = -Math.PI / 180 * 30;
-    gl.uniformMatrix4fv(output3DProg.uniforms["u_view"], false, new Float32Array([
+    gl.uniformMatrix4fv(programs.output3D.uniforms["u_view"], false, new Float32Array([
         1, 0, 0, 0, 0, Math.cos(ang_x), Math.sin(ang_x), 0, 0, -Math.sin(ang_x), Math.cos(ang_x), 0, 0, 0, 0, 1,
     ]));
 
@@ -209,8 +205,8 @@ const main = function() {
         gl,
         createTexture(gl,
                       TEXTURE_UNITS.outputA,
-                      params.modes.x,
-                      params.modes.y,
+                      params.modes,
+                      params.modes,
                       gl.RGBA16F,
                       gl.RGBA,
                       gl.FLOAT,
@@ -223,8 +219,8 @@ const main = function() {
         gl,
         createTexture(gl,
                       TEXTURE_UNITS.outputB,
-                      params.modes.x,
-                      params.modes.y,
+                      params.modes,
+                      params.modes,
                       gl.RGBA16F,
                       gl.RGBA,
                       gl.FLOAT,
@@ -238,8 +234,8 @@ const main = function() {
         gl,
         createTexture(gl,
                       TEXTURE_UNITS.amplitudes,
-                      params.modes.x,
-                      params.modes.y,
+                      params.modes,
+                      params.modes,
                       gl.RG16F,
                       gl.RG,
                       gl.FLOAT,
@@ -253,15 +249,15 @@ const main = function() {
     gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
     gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.position, 2, gl.FLOAT, false, 0, 0);
 
-    gl.useProgram(initProg.prog);
-    gl.uniform2f(initProg.uniforms["u_modes"], params.modes.x, params.modes.y);
-    gl.uniform2f(initProg.uniforms["u_scales"], params.scales.x, params.scales.y);
-    gl.uniform2f(initProg.uniforms["u_omega"], params.wind[0], params.wind[1]);
-    gl.uniform2f(initProg.uniforms["u_seed"], Math.random(), Math.random());
-    gl.uniform1f(initProg.uniforms["u_cutoff"], params.cutoff);
-    gl.uniform1f(initProg.uniforms["u_amp"], params.amp);
+    gl.useProgram(programs.init.prog);
+    gl.uniform2f(programs.init.uniforms["u_modes"], params.modes, params.modes);
+    gl.uniform2f(programs.init.uniforms["u_scales"], params.scale, params.scale);
+    gl.uniform2f(programs.init.uniforms["u_omega"], params.wind_x, params.wind_y);
+    gl.uniform2f(programs.init.uniforms["u_seed"], Math.random(), Math.random());
+    gl.uniform1f(programs.init.uniforms["u_cutoff"], params.cutoff);
+    gl.uniform1f(programs.init.uniforms["u_amp"], params.amp);
     gl.bindFramebuffer(gl.FRAMEBUFFER, amplitudesFb);
-    gl.viewport(0, 0, params.modes.x, params.modes.y);
+    gl.viewport(0, 0, params.modes, params.modes);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     let t = 0.0;
@@ -273,24 +269,24 @@ const main = function() {
         gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.position, 2, gl.FLOAT, false, 0, 0);
 
         // TODO: Probably no need to run this every time
-        gl.useProgram(conjugationProg.prog);
-        gl.uniform1i(conjugationProg.uniforms["u_input"], TEXTURE_UNITS.amplitudes);
+        gl.useProgram(programs.conjugation.prog);
+        gl.uniform1i(programs.conjugation.uniforms["u_input"], TEXTURE_UNITS.amplitudes);
         gl.bindFramebuffer(gl.FRAMEBUFFER, outputAFb);
-        gl.viewport(0, 0, params.modes.x, params.modes.y);
+        gl.viewport(0, 0, params.modes, params.modes);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        gl.useProgram(timeEvolutionProgram.prog);
-        gl.uniform1i(timeEvolutionProgram.uniforms["u_input"], TEXTURE_UNITS.outputA);
-        gl.uniform1f(timeEvolutionProgram.uniforms["u_t"], t);
+        gl.useProgram(programs.timeEvolution.prog);
+        gl.uniform1i(programs.timeEvolution.uniforms["u_input"], TEXTURE_UNITS.outputA);
+        gl.uniform1f(programs.timeEvolution.uniforms["u_t"], t);
         gl.bindFramebuffer(gl.FRAMEBUFFER, outputBFb);
-        gl.viewport(0, 0, params.modes.x, params.modes.y);
+        gl.viewport(0, 0, params.modes, params.modes);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        fft(gl, fftProg, TEXTURE_UNITS.outputB, outputBFb, params);
+        fft(gl, programs.fft, TEXTURE_UNITS.outputB, outputBFb, params);
 
-        // gl.useProgram(outputProg.prog);
-        // gl.uniform1i(outputProg.uniforms["u_input"], TEXTURE_UNITS.outputB);
-        // gl.uniform1i(outputProg.uniforms["u_type"], channel);
+        // gl.useProgram(programs.output.prog);
+        // gl.uniform1i(programs.output.uniforms["u_input"], TEXTURE_UNITS.outputB);
+        // gl.uniform1i(programs.output.uniforms["u_type"], channel);
 
         gl.disableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
 
@@ -301,8 +297,8 @@ const main = function() {
         gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.mappos);
         gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.mappos, 2, gl.FLOAT, false, 5 * Float32Array.BYTES_PER_ELEMENT, 0);
 
-        gl.useProgram(output3DProg.prog);
-        gl.uniform1i(output3DProg.uniforms["u_displacements"], TEXTURE_UNITS.outputB);
+        gl.useProgram(programs.output3D.prog);
+        gl.uniform1i(programs.output3D.uniforms["u_displacements"], TEXTURE_UNITS.outputB);
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null); // render to canvas
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);

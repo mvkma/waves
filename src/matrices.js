@@ -117,7 +117,7 @@ const translation = function (x, y, z) {
  *
  * @returns {Float32Array}
  */
-const perspectiveProjection = function (r, l, t, b, n, f) {
+const perspectiveProjection = function (l, r, b, t, n, f) {
     return new Float32Array([
         2.0 * n / (r - l), 0.0, 0.0, 0.0,
         0.0, 2.0 * n / (t - b), 0.0, 0.0,
@@ -175,6 +175,7 @@ export {
     rotateY,
     rotateZ,
     translate,
+    perspectiveProjection,
     rotationX,
     rotationY,
     rotationZ,

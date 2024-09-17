@@ -100,16 +100,16 @@ const SimulationParameters = class {
         this.modes = 512;
 
         /** @type {number} */
-        this.scale = 600;
+        this.scale = 200;
 
         /** @type {number} */
         this.g = 9.81;
 
         /** @type {number} */
-        this.wind_x = 20.0;
+        this.wind_x = 10.0;
 
         /** @type {number} */
-        this.wind_y = 0.0;
+        this.wind_y = 15.0;
 
         /** @type {number} */
         this.cutoff = 1.0;

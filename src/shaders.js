@@ -49,9 +49,13 @@ void main() {
 
     // TODO: verify that this is correct
     vec3 vr = get_displacement(a_mappos + vec2( 0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3( 2.0 / (u_modes.x - 1.0), 0, 0);
+    vr = mat3(u_projection) * mat3(u_view) * vr;
     vec3 vl = get_displacement(a_mappos + vec2(-0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3(-2.0 / (u_modes.x - 1.0), 0, 0);
+    vl = mat3(u_projection) * mat3(u_view) * vl;
     vec3 vb = get_displacement(a_mappos + vec2(0,  0.5 / u_modes.y)).xyz - dis.xyz + vec3(0,  2.0 / (u_modes.y - 1.0), 0);
+    vb = mat3(u_projection) * mat3(u_view) * vb;
     vec3 vt = get_displacement(a_mappos + vec2(0, -0.5 / u_modes.y)).xyz - dis.xyz + vec3(0, -2.0 / (u_modes.y - 1.0), 0);
+    vt = mat3(u_projection) * mat3(u_view) * vt;
 
     v_normal = normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr));
 }

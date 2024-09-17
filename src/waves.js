@@ -195,13 +195,18 @@ const main = function() {
     gl.uniform3f(programs.output3D.uniforms["u_skycolor"], 80 / 255, 160 / 255, 220 / 255);
     gl.uniform3f(programs.output3D.uniforms["u_watercolor"], 0.1, 0.2, 0.3);
     gl.uniform3f(programs.output3D.uniforms["u_aircolor"], 0.10, 0.10, 0.40);
-    gl.uniformMatrix4fv(programs.output3D.uniforms["u_projection"], false, new Float32Array([
-        0.6666666865348816, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0202020406723022, -1, 0, 0, -0.20202019810676575, 0,
-    ]));
-    let ang_x = -Math.PI / 180 * 30;
-    gl.uniformMatrix4fv(programs.output3D.uniforms["u_view"], false, new Float32Array([
-        1, 0, 0, 0, 0, Math.cos(ang_x), Math.sin(ang_x), 0, 0, -Math.sin(ang_x), Math.cos(ang_x), 0, 0, 0, 0, 1,
-    ]));
+
+    const aspectRatio = gl.canvas.width / gl.canvas.height;
+    const x = 0.8;
+    const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
+    console.log(projMat);
+    gl.uniformMatrix4fv(programs.output3D.uniforms["u_projection"], false, projMat);
+    // gl.uniformMatrix4fv(programs.output3D.uniforms["u_projection"], false, new Float32Array([
+    //     0.6666666865348816, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0202020406723022, -1, 0, 0, -0.20202019810676575, 0,
+    // ]));
+
+    const viewMat = mat.rotationX(Math.PI / 180 * 10);
+    gl.uniformMatrix4fv(programs.output3D.uniforms["u_view"], false, viewMat);
 
     var outputAFb = createFramebuffer(
         gl,

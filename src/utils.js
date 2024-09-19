@@ -130,7 +130,7 @@ const SimulationParameters = class {
         return {
             "modes": {
                 type: "range",
-                value: this.modes,
+                value: Math.log2(this.modes),
                 attributes: { min: 4, max: 12, step: 1 },
                 name: "FFT size",
                 onChange: (n) => this.update("modes", 2**parseInt(n)),

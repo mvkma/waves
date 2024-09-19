@@ -19,12 +19,22 @@ import {
 
 import * as mat from "./matrices.js";
 
+const FLOAT_SIZE = Float32Array.BYTES_PER_ELEMENT;
+
 const TEXTURE_UNITS = {
     outputA: 3,
     outputB: 4,
     amplitudes: 5,
     tempA: 6,
     tempB: 7,
+};
+
+const FRAMEBUFFERS = {
+    outputA: null,
+    outputB: null,
+    amplitudes: null,
+    tempA: null,
+    tempB: null,
 };
 
 const ATTRIBUTE_LOCATIONS = {
@@ -61,49 +71,54 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
     gl.useProgram(prog.prog)
     gl.uniform1f(prog.uniforms["u_size"], params.modes);
 
-    let fbA = createFramebuffer(
-        gl,
-        createTexture(gl,
-                      TEXTURE_UNITS.tempA,
-                      params.modes,
-                      params.modes,
-                      gl.RGBA16F,
-                      gl.RGBA,
-                      gl.FLOAT,
-                      gl.NEAREST,
-                      gl.CLAMP_TO_EDGE,
-                      null),
-    );
-    let fbB = createFramebuffer(
-        gl,
-        createTexture(gl,
-                      TEXTURE_UNITS.tempB,
-                      params.modes,
-                      params.modes,
-                      gl.RGBA16F,
-                      gl.RGBA,
-                      gl.FLOAT,
-                      gl.NEAREST,
-                      gl.CLAMP_TO_EDGE,
-                      null),
-    );
-
     let inputs = [TEXTURE_UNITS.tempB, TEXTURE_UNITS.tempA];
-    let outputs = [fbA, fbB];
+    let outputs = [FRAMEBUFFERS.tempA, FRAMEBUFFERS.tempB];
 
     let k = Math.log2(params.modes);
 
-    // console.log(`i = 0, subsize = 1`);
-    fftStep(gl, prog, inputTextureUnit, fbA, 2**k, 1, 0);
+    fftStep(gl, prog, inputTextureUnit, FRAMEBUFFERS.tempA, 2**k, 1, 0);
     for (let i = 1; i < 2 * k - 1; i++) {
         let subSize = Math.pow(2, i % k);
-        // console.log(`i = ${i}, subsize = ${subSize}`);
         fftStep(gl, prog, inputs[i % 2], outputs[i % 2], 2**k, subSize, i >= k ? 1 : 0);
     }
 
-    // console.log(`i = ${2 * k - 1}, subsize = ${2**(k-1)}`);
     let input = ((2 * k) % 2 === 0) ? inputs[1] : inputs[0];
     fftStep(gl, prog, input, outputBuffer, 2**k, 2**(k - 1), 1);
+}
+
+/**
+ * @param {string} parentId
+ * @param {object} params
+ */
+function buildControls(parentId, params) {
+    const parent = document.querySelector(`#${parentId}`);
+
+    while (parent.firstChild) {
+        parent.removeChild(parent.firstChild);
+    }
+
+    for (const k of Object.keys(params)) {
+        const param = params[k];
+
+        const label = document.createElement("label");
+        label.setAttribute("for", k);
+        label.textContent = param.name + ":";
+
+        const input = document.createElement("input");
+        input.type = param.type;
+        if (param.attributes) {
+            Object.keys(param.attributes).forEach(k => input.setAttribute(k, param.attributes[k]));
+        }
+        input.value = param.value;
+        input.addEventListener("input", (ev) => param.onChange(ev.target.value));
+
+        const container = document.createElement("div");
+        container.setAttribute("class", "param-row");
+        container.appendChild(label);
+        container.appendChild(input);
+
+        parent.appendChild(container);
+    }
 }
 
 const main = function() {
@@ -116,7 +131,9 @@ const main = function() {
     // Initalization
     const params = new SimulationParameters();
     console.log(params);
+    buildControls("simulationControls", params.getParameters());
 
+    // init
     const omegaMag = params.wind_x * params.wind_x + params.wind_y * params.wind_y;
     console.log(`dx = ${params.scale / params.modes}, dy = ${params.scale / params.modes}`);
     console.log(`omegaMag / g = ${omegaMag / params.g}`);
@@ -139,12 +156,18 @@ const main = function() {
         output3D: new Program(gl, vertexShader3D, oceanSurfaceShader3D, bindings3d),
     };
 
-    const positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    const buffers = {
+        positions2D: gl.createBuffer(),
+        positions3D: gl.createBuffer(),
+        indices3D: gl.createBuffer(),
+    };
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers["positions2D"]);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0]), gl.STATIC_DRAW);
 
     let positions3D = new Float32Array({length: 5 * params.modes * params.modes / 4});
     let indices3D = new Uint16Array({length: 6 * (params.modes / 2 - 1) * (params.modes / 2 - 1)});
+
     for (let y = 0; y < params.modes / 2; y++) {
         for (let x = 0; x < params.modes / 2; x++) {
             let pos_ix = (y * params.modes / 2 + x) * 5;
@@ -164,14 +187,13 @@ const main = function() {
         }
     }
 
-    const position3DBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, position3DBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers["positions3D"]);
     gl.bufferData(gl.ARRAY_BUFFER, positions3D, gl.STATIC_DRAW);
 
-    const indices3DBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices3DBuffer);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers["indices3D"]);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices3D, gl.STATIC_DRAW);
 
+    // init (simulation params changed)
     gl.useProgram(programs.output.prog);
     gl.uniform1i(programs.output.uniforms["u_type"], 0);
     gl.uniform1f(programs.output.uniforms["u_offset"], 0.5);
@@ -179,12 +201,13 @@ const main = function() {
     gl.uniform2f(programs.output.uniforms["u_coordscale"], 1, 1);
     gl.uniform2f(programs.output.uniforms["u_modes"], params.modes, params.modes);
 
+    // init (simulation params changed)
     gl.useProgram(programs.timeEvolution.prog);
     gl.uniform2f(programs.timeEvolution.uniforms["u_modes"], params.modes, params.modes);
     gl.uniform2f(programs.timeEvolution.uniforms["u_scales"], params.scale, params.scale);
 
+    // output (simulation params or view params changed)
     gl.useProgram(programs.output3D.prog);
-    // TODO: correct matrices
     gl.uniform2f(programs.output3D.uniforms["u_modes"], params.modes, params.modes);
     gl.uniform2f(programs.output3D.uniforms["u_scales"], params.scale, params.scale);
     gl.uniform1f(programs.output3D.uniforms["u_n1"], 1.0);
@@ -201,58 +224,28 @@ const main = function() {
     const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
     console.log(projMat);
     gl.uniformMatrix4fv(programs.output3D.uniforms["u_projection"], false, projMat);
-    // gl.uniformMatrix4fv(programs.output3D.uniforms["u_projection"], false, new Float32Array([
-    //     0.6666666865348816, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1.0202020406723022, -1, 0, 0, -0.20202019810676575, 0,
-    // ]));
 
     const viewMat = mat.rotationX(Math.PI / 180 * 10);
     gl.uniformMatrix4fv(programs.output3D.uniforms["u_view"], false, viewMat);
 
-    var outputAFb = createFramebuffer(
-        gl,
-        createTexture(gl,
-                      TEXTURE_UNITS.outputA,
-                      params.modes,
-                      params.modes,
-                      gl.RGBA16F,
-                      gl.RGBA,
-                      gl.FLOAT,
-                      gl.NEAREST,
-                      gl.CLAMP_TO_EDGE,
-                      null),
-    );
-
-    var outputBFb = createFramebuffer(
-        gl,
-        createTexture(gl,
-                      TEXTURE_UNITS.outputB,
-                      params.modes,
-                      params.modes,
-                      gl.RGBA16F,
-                      gl.RGBA,
-                      gl.FLOAT,
-                      gl.NEAREST,
-                      gl.CLAMP_TO_EDGE,
-                      null),
-    );
-
-
-    var amplitudesFb = createFramebuffer(
-        gl,
-        createTexture(gl,
-                      TEXTURE_UNITS.amplitudes,
-                      params.modes,
-                      params.modes,
-                      gl.RG16F,
-                      gl.RG,
-                      gl.FLOAT,
-                      gl.NEAREST,
-                      gl.CLAMP_TO_EDGE,
-                      null),
-    );
+    for (const name of Object.keys(TEXTURE_UNITS)) {
+        FRAMEBUFFERS[name] = createFramebuffer(
+            gl,
+            createTexture(gl,
+                          TEXTURE_UNITS[name],
+                          params.modes,
+                          params.modes,
+                          gl.RGBA16F,
+                          gl.RGBA,
+                          gl.FLOAT,
+                          gl.NEAREST,
+                          gl.CLAMP_TO_EDGE,
+                          null),
+        );
+    }
 
     // Rendering
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions2D);
     gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
     gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.position, 2, gl.FLOAT, false, 0, 0);
 
@@ -263,7 +256,7 @@ const main = function() {
     gl.uniform2f(programs.init.uniforms["u_seed"], Math.random(), Math.random());
     gl.uniform1f(programs.init.uniforms["u_cutoff"], params.cutoff);
     gl.uniform1f(programs.init.uniforms["u_amp"], params.amp);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, amplitudesFb);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, FRAMEBUFFERS["amplitudes"]);
     gl.viewport(0, 0, params.modes, params.modes);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -271,25 +264,25 @@ const main = function() {
     let channel = 0;
     let paused = true;
     const render = function() {
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions2D);
         gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
         gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.position, 2, gl.FLOAT, false, 0, 0);
 
         // TODO: Probably no need to run this every time
         gl.useProgram(programs.conjugation.prog);
         gl.uniform1i(programs.conjugation.uniforms["u_input"], TEXTURE_UNITS.amplitudes);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, outputAFb);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, FRAMEBUFFERS["outputA"]);
         gl.viewport(0, 0, params.modes, params.modes);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         gl.useProgram(programs.timeEvolution.prog);
         gl.uniform1i(programs.timeEvolution.uniforms["u_input"], TEXTURE_UNITS.outputA);
         gl.uniform1f(programs.timeEvolution.uniforms["u_t"], t);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, outputBFb);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, FRAMEBUFFERS["outputB"]);
         gl.viewport(0, 0, params.modes, params.modes);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        fft(gl, programs.fft, TEXTURE_UNITS.outputB, outputBFb, params);
+        fft(gl, programs.fft, TEXTURE_UNITS.outputB, FRAMEBUFFERS["outputB"], params);
 
         // gl.useProgram(programs.output.prog);
         // gl.uniform1i(programs.output.uniforms["u_input"], TEXTURE_UNITS.outputB);
@@ -297,12 +290,12 @@ const main = function() {
 
         gl.disableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, position3DBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers["positions3D"]);
         gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.vertexpos);
-        gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.vertexpos, 3, gl.FLOAT, false, 5 * Float32Array.BYTES_PER_ELEMENT, 2 * Float32Array.BYTES_PER_ELEMENT);
+        gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.vertexpos, 3, gl.FLOAT, false, 5 * FLOAT_SIZE, 2 * FLOAT_SIZE);
 
         gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.mappos);
-        gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.mappos, 2, gl.FLOAT, false, 5 * Float32Array.BYTES_PER_ELEMENT, 0);
+        gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.mappos, 2, gl.FLOAT, false, 5 * FLOAT_SIZE, 0);
 
         gl.useProgram(programs.output3D.prog);
         gl.uniform1i(programs.output3D.uniforms["u_displacements"], TEXTURE_UNITS.outputB);
@@ -315,7 +308,7 @@ const main = function() {
         // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         t += 0.1;
-        // console.log(t);
+        // console.log(t, params.changed);
         if (!paused) {
             window.setTimeout(() => window.requestAnimationFrame(render), 100);
         }

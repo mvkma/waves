@@ -94,6 +94,98 @@ const Program = class {
     }
 }
 
+/**
+ * @param {string} color
+ *
+ * @return {number[]}
+ */
+function colorToVec(color) {
+    return [1, 3, 5].map(ix => parseInt(color.slice(ix, ix + 2), 16) / 255);
+}
+
+/**
+ * @param {number[]} vec
+ *
+ * @return {string}
+ */
+function vecToColor(vec) {
+    return "#" + vec.map(x => (x * 255).toString(16)).reduce((a, b) => a + b, "");
+}
+
+const ViewParameters = class {
+    constructor () {
+        /** @type {number} */
+        this.diffuse = 0.95;
+
+        /** @type {number[]} */
+        this.skyColor = colorToVec("#50a0dc");
+
+        /** @type {number[]} */
+        this.waterColor = colorToVec("#20334d");
+
+        /** @type {number[]} */
+        this.airColor = colorToVec("#202066");
+
+        /** @type {number} */
+        this.angX = 10.0;
+
+        /** @type {number} */
+        this.angZ = 0.0;
+
+        /** @type {bool} */
+        this.changed = false;
+    }
+
+    update(key, value) {
+        this[key] = value;
+        this.changed = true;
+    }
+
+    getParameters () {
+        return {
+            "diffuse": {
+                type: "range",
+                value: this.diffuse,
+                attributes: { min: 0, max: 1, step: 0.05 },
+                name: "Diffuse",
+                onChange: (n) => this.update("diffuse", n),
+            },
+            "skyColor": {
+                type: "color",
+                value: vecToColor(this.skyColor),
+                name: "Sky color",
+                onChange: (n) => this.update("skyColor", colorToVec(n)),
+            },
+            "waterColor": {
+                type: "color",
+                value: vecToColor(this.waterColor),
+                name: "Water color",
+                onChange: (n) => this.update("waterColor", colorToVec(n)),
+            },
+            "airColor": {
+                type: "color",
+                value: vecToColor(this.airColor),
+                name: "Air color",
+                onChange: (n) => this.update("airColor", colorToVec(n)),
+            },
+            "angX": {
+                type: "range",
+                value: this.angX,
+                attributes: { min: -180, max: 180, step: 1 },
+                name: "Angle X",
+                onChange: (n) => this.update("angX", n),
+            },
+            "angZ": {
+                type: "range",
+                value: this.angZ,
+                attributes: { min: -180, max: 180, step: 1 },
+                name: "Angle Z",
+                onChange: (n) => this.update("angZ", n),
+            },
+        };
+    }
+}
+
 const SimulationParameters = class {
     constructor () {
         /** @type {number} */
@@ -168,4 +260,4 @@ const SimulationParameters = class {
 }
 
 
-export { Program, SimulationParameters, createTexture, createFramebuffer, };
+export { Program, SimulationParameters, ViewParameters, createTexture, createFramebuffer, };

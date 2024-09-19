@@ -1,6 +1,7 @@
 import {
     Program,
     SimulationParameters,
+    ViewParameters,
     createTexture,
     createFramebuffer,
 } from "./utils.js";
@@ -16,6 +17,10 @@ import {
     sampleInitShader,
     waveInitShader,
 } from "./shaders.js";
+
+import {
+    buildControls,
+} from "./ui.js";
 
 import * as mat from "./matrices.js";
 
@@ -86,41 +91,6 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
     fftStep(gl, prog, input, outputBuffer, 2**k, 2**(k - 1), 1);
 }
 
-/**
- * @param {string} parentId
- * @param {object} params
- */
-function buildControls(parentId, params) {
-    const parent = document.querySelector(`#${parentId}`);
-
-    while (parent.firstChild) {
-        parent.removeChild(parent.firstChild);
-    }
-
-    for (const k of Object.keys(params)) {
-        const param = params[k];
-
-        const label = document.createElement("label");
-        label.setAttribute("for", k);
-        label.textContent = param.name + ":";
-
-        const input = document.createElement("input");
-        input.type = param.type;
-        if (param.attributes) {
-            Object.keys(param.attributes).forEach(k => input.setAttribute(k, param.attributes[k]));
-        }
-        input.value = param.value;
-        input.addEventListener("input", (ev) => param.onChange(ev.target.value));
-
-        const container = document.createElement("div");
-        container.setAttribute("class", "param-row");
-        container.appendChild(label);
-        container.appendChild(input);
-
-        parent.appendChild(container);
-    }
-}
-
 const Waves = class {
     constructor () {
         this.gl = document.querySelector("canvas").getContext("webgl2");
@@ -132,6 +102,9 @@ const Waves = class {
 
         this.params = new SimulationParameters();
         buildControls("simulationControls", this.params.getParameters());
+
+        this.view = new ViewParameters();
+        buildControls("viewControls", this.view.getParameters());
 
         const bindings2d = { "a_position": ATTRIBUTE_LOCATIONS["position"] };
         const bindings3d = {
@@ -240,26 +213,27 @@ const Waves = class {
     }
 
     initView () {
-        // output (simulation this.params or view this.params changed)
         this.gl.useProgram(this.programs.output3D.prog);
         this.gl.uniform2f(this.programs.output3D.uniforms["u_modes"], this.params.modes, this.params.modes);
         this.gl.uniform2f(this.programs.output3D.uniforms["u_scales"], this.params.scale, this.params.scale);
         this.gl.uniform1f(this.programs.output3D.uniforms["u_n1"], 1.0);
         this.gl.uniform1f(this.programs.output3D.uniforms["u_n2"], 1.34);
-        this.gl.uniform1f(this.programs.output3D.uniforms["u_diffuse"], 0.95);
+        this.gl.uniform1f(this.programs.output3D.uniforms["u_diffuse"], this.view.diffuse);
         this.gl.uniform3f(this.programs.output3D.uniforms["u_lightdir"], 0.0, 30.0, 100.0);
         this.gl.uniform3f(this.programs.output3D.uniforms["u_camerapos"], 0.5, 0.5, 3.0);
-        this.gl.uniform3f(this.programs.output3D.uniforms["u_skycolor"], 80 / 255, 160 / 255, 220 / 255);
-        this.gl.uniform3f(this.programs.output3D.uniforms["u_watercolor"], 0.1, 0.2, 0.3);
-        this.gl.uniform3f(this.programs.output3D.uniforms["u_aircolor"], 0.10, 0.10, 0.40);
+        this.gl.uniform3f(this.programs.output3D.uniforms["u_skycolor"], ...this.view.skyColor);
+        this.gl.uniform3f(this.programs.output3D.uniforms["u_watercolor"], ...this.view.waterColor);
+        this.gl.uniform3f(this.programs.output3D.uniforms["u_aircolor"], ...this.view.airColor);
 
         const aspectRatio = this.gl.canvas.width / this.gl.canvas.height;
         const x = 0.8;
         const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
         this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_projection"], false, projMat);
 
-        const viewMat = mat.rotationX(Math.PI / 180 * 10);
+        const viewMat = mat.rotateX(mat.rotationZ(Math.PI / 180 * this.view.angZ), Math.PI / 180 * this.view.angX);
         this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_view"], false, viewMat);
+
+        this.view.changed = false;
     }
 
     render () {
@@ -292,6 +266,9 @@ const Waves = class {
         this.gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.mappos);
         this.gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.mappos, 2, this.gl.FLOAT, false, 5 * FLOAT_SIZE, 0);
 
+        if (this.view.changed) {
+            this.initView();
+        }
         this.gl.useProgram(this.programs.output3D.prog);
         this.gl.uniform1i(this.programs.output3D.uniforms["u_displacements"], TEXTURE_UNITS.outputB);
 

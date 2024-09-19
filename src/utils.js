@@ -132,6 +132,9 @@ const ViewParameters = class {
         /** @type {number} */
         this.angZ = 0.0;
 
+        /** @type {number} */
+        this.interval = 100;
+
         /** @type {bool} */
         this.changed = false;
     }
@@ -181,6 +184,13 @@ const ViewParameters = class {
                 attributes: { min: -180, max: 180, step: 1 },
                 name: "Angle Z",
                 onChange: (n) => this.update("angZ", n),
+            },
+            "interval": {
+                type: "range",
+                value: this.interval,
+                attributes: { min: 0, max: 200, step: 20 },
+                name: "Interval",
+                onChange: (n) => this.update("interval", n),
             },
         };
     }
@@ -250,7 +260,7 @@ const SimulationParameters = class {
             },
             "cutoff": {
                 type: "range",
-                value: this.wind_y,
+                value: this.cutoff,
                 attributes: { min: 0, max: 10, step: 0.5 },
                 name: "Cutoff",
                 onChange: (n) => this.update("cutoff", parseInt(n)),

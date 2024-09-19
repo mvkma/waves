@@ -210,6 +210,8 @@ const Waves = class {
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, FRAMEBUFFERS["amplitudes"]);
         this.gl.viewport(0, 0, this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+        this.params.changed = false;
     }
 
     initView () {
@@ -237,6 +239,11 @@ const Waves = class {
     }
 
     render () {
+        if (this.params.changed) {
+            this.initSimulation();
+            this.initView();
+        }
+
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffers.positions2D);
         this.gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
         this.gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.position, 2, this.gl.FLOAT, false, 0, 0);
@@ -280,9 +287,8 @@ const Waves = class {
         // this.gl.drawArrays(this.gl.TRIANTHIS.GLE_STRIP, 0, 4);
 
         this.t += 0.1;
-        // console.log(t, params.changed);
         if (!this.paused) {
-            window.setTimeout(() => window.requestAnimationFrame(() => this.render()), 100);
+            window.setTimeout(() => window.requestAnimationFrame(() => this.render()), this.view.interval);
         }
     }
 }

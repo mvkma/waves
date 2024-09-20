@@ -35,6 +35,7 @@ const TEXTURE_UNITS = {
 };
 
 const FRAMEBUFFERS = {
+    canvas: null,
     outputA: null,
     outputB: null,
     amplitudes: null,
@@ -132,6 +133,11 @@ const Waves = class {
         this.initView();
     }
 
+    useFramebuffer(fb, width, height) {
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, FRAMEBUFFERS[fb]);
+        this.gl.viewport(0, 0, width, height);
+    }
+
     initSimulation () {
         const omegaMag = this.params.wind_x * this.params.wind_x + this.params.wind_y * this.params.wind_y;
         console.log(`dx = ${this.params.scale / this.params.modes}, dy = ${this.params.scale / this.params.modes}`);
@@ -211,8 +217,7 @@ const Waves = class {
             "u_cutoff": this.params.cutoff,
             "u_amp": this.params.amp,
         });
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, FRAMEBUFFERS["amplitudes"]);
-        this.gl.viewport(0, 0, this.params.modes, this.params.modes);
+        this.useFramebuffer("amplitudes", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
         this.params.changed = false;
@@ -256,14 +261,12 @@ const Waves = class {
         // TODO: Probably no need to run this every time
         this.gl.useProgram(this.programs.conjugation.prog);
         this.programs.conjugation.setUniforms(this.gl, {"u_input": TEXTURE_UNITS.amplitudes});
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, FRAMEBUFFERS["outputA"]);
-        this.gl.viewport(0, 0, this.params.modes, this.params.modes);
+        this.useFramebuffer("outputA", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
         this.gl.useProgram(this.programs.timeEvolution.prog);
         this.programs.timeEvolution.setUniforms(this.gl, {"u_input": TEXTURE_UNITS.outputA, "u_t": this.t});
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, FRAMEBUFFERS["outputB"]);
-        this.gl.viewport(0, 0, this.params.modes, this.params.modes);
+        this.useFramebuffer("outputB", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
         fft(this.gl, this.programs.fft, TEXTURE_UNITS.outputB, FRAMEBUFFERS["outputB"], this.params);
@@ -283,8 +286,7 @@ const Waves = class {
         this.gl.useProgram(this.programs.output3D.prog);
         this.programs.output3D.setUniforms(this.gl, {"u_displacements": TEXTURE_UNITS.outputB});
 
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null); // render to canvas
-        this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
+        this.useFramebuffer("canvas", this.gl.canvas.width, this.gl.canvas.height);
         //this.gl.enable(this.gl.DEPTH_TEST);
         //this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
         this.gl.drawElements(this.gl.TRIANGLES, 6 * (this.params.modes / 2 - 1) * (this.params.modes / 2 - 1), this.gl.UNSIGNED_SHORT, 0);

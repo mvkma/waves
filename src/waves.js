@@ -1,7 +1,7 @@
 import {
     Program,
-    SimulationParameters,
-    ViewParameters,
+    simulationParameters,
+    viewParameters,
     createTexture,
     createFramebuffer,
 } from "./utils.js";
@@ -25,6 +25,8 @@ import {
 import * as mat from "./matrices.js";
 
 const FLOAT_SIZE = Float32Array.BYTES_PER_ELEMENT;
+
+const G = 9.81;
 
 const TEXTURE_UNITS = {
     outputA: 3,
@@ -99,11 +101,11 @@ const Waves = class {
             return;
         }
 
-        this.params = new SimulationParameters();
-        buildControls("simulationControls", this.params.getParameters());
+        this.params = simulationParameters;
+        buildControls("simulationControls", this.params);
 
-        this.view = new ViewParameters();
-        buildControls("viewControls", this.view.getParameters());
+        this.view = viewParameters;
+        buildControls("viewControls", this.view);
 
         const bindings2d = { "a_position": ATTRIBUTE_LOCATIONS["position"] };
         const bindings3d = {
@@ -129,6 +131,9 @@ const Waves = class {
         this.channel = 0;
         this.paused = true;
 
+        console.log(this.view);
+        console.log(this.params);
+
         this.initSimulation();
         this.initView();
     }
@@ -140,10 +145,9 @@ const Waves = class {
 
     initSimulation () {
         const omegaMag = this.params.wind_x * this.params.wind_x + this.params.wind_y * this.params.wind_y;
-        console.log(`dx = ${this.params.scale / this.params.modes}, dy = ${this.params.scale / this.params.modes}`);
-        console.log(`omegaMag / g = ${omegaMag / this.params.g}`);
-        console.log(`(omegaMag / g) / dx = ${omegaMag / this.params.g / (this.params.scale / this.params.modes)}`);
-        console.log(`(omegaMag / g) / dy = ${omegaMag / this.params.g / (this.params.scale / this.params.modes)}`);
+        console.log(`dx = ${this.params.scale / this.params.modes}`);
+        console.log(`omegaMag / g = ${omegaMag / G}`);
+        console.log(`(omegaMag / g) / dy = ${omegaMag / G / (this.params.scale / this.params.modes)}`);
 
         let positions3D = new Float32Array({length: 5 * this.params.modes * this.params.modes / 4});
         let indices3D = new Uint16Array({length: 6 * (this.params.modes / 2 - 1) * (this.params.modes / 2 - 1)});
@@ -215,7 +219,7 @@ const Waves = class {
             "u_omega": [this.params.wind_x, this.params.wind_y],
             "u_seed": [Math.random(), Math.random()],
             "u_cutoff": this.params.cutoff,
-            "u_amp": this.params.amp,
+            "u_amp": 1 / this.params.modes / 50, // TODO
         });
         this.useFramebuffer("amplitudes", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);

@@ -106,7 +106,7 @@ const Program = class {
      * @param {object} uniformValues
      */
     setUniforms(gl, uniformValues) {
-        let location, type, setter;
+        let location, type;
         for (const key of Object.keys(uniformValues)) {
             [location, type] = this.uniforms[key];
             gl[WEBGL_UNIFORM_SETTERS[type]](location, uniformValues[key]);
@@ -132,30 +132,17 @@ function vecToColor(vec) {
     return "#" + vec.map(x => (x * 255).toString(16)).reduce((a, b) => a + b, "");
 }
 
-const ViewParameters = class {
-    constructor () {
-        /** @type {number} */
-        this.diffuse = 0.95;
+const ParameterGroup = class {
+    constructor(params) {
+        this.defaults = {};
+        this.specs = {};
 
-        /** @type {number[]} */
-        this.skyColor = colorToVec("#50a0dc");
+        for (const [name, spec] of Object.entries(params)) {
+            this[name] = spec.value;
+            this.defaults[name] = spec.value;
+            this.specs[name] = spec;
+        }
 
-        /** @type {number[]} */
-        this.waterColor = colorToVec("#20334d");
-
-        /** @type {number[]} */
-        this.airColor = colorToVec("#202066");
-
-        /** @type {number} */
-        this.angX = 10.0;
-
-        /** @type {number} */
-        this.angZ = 0.0;
-
-        /** @type {number} */
-        this.interval = 100;
-
-        /** @type {bool} */
         this.changed = false;
     }
 
@@ -164,130 +151,111 @@ const ViewParameters = class {
         this.changed = true;
     }
 
-    getParameters () {
-        return {
-            "diffuse": {
-                type: "range",
-                value: this.diffuse,
-                attributes: { min: 0, max: 1, step: 0.05 },
-                name: "Diffuse",
-                onChange: (n) => this.update("diffuse", n),
-            },
-            "skyColor": {
-                type: "color",
-                value: vecToColor(this.skyColor),
-                name: "Sky color",
-                onChange: (n) => this.update("skyColor", colorToVec(n)),
-            },
-            "waterColor": {
-                type: "color",
-                value: vecToColor(this.waterColor),
-                name: "Water color",
-                onChange: (n) => this.update("waterColor", colorToVec(n)),
-            },
-            "airColor": {
-                type: "color",
-                value: vecToColor(this.airColor),
-                name: "Air color",
-                onChange: (n) => this.update("airColor", colorToVec(n)),
-            },
-            "angX": {
-                type: "range",
-                value: this.angX,
-                attributes: { min: -180, max: 180, step: 1 },
-                name: "Angle X",
-                onChange: (n) => this.update("angX", n),
-            },
-            "angZ": {
-                type: "range",
-                value: this.angZ,
-                attributes: { min: -180, max: 180, step: 1 },
-                name: "Angle Z",
-                onChange: (n) => this.update("angZ", n),
-            },
-            "interval": {
-                type: "range",
-                value: this.interval,
-                attributes: { min: 0, max: 200, step: 20 },
-                name: "Interval",
-                onChange: (n) => this.update("interval", n),
-            },
-        };
+    reset() {
+        for (const [k, v] of Object.entries(this.defaults)) {
+            this[k] = v;
+        }
     }
 }
 
-const SimulationParameters = class {
-    constructor () {
-        /** @type {number} */
-        this.modes = 512;
+const viewParameters = new ParameterGroup({
+    "diffuse": {
+        type: "range",
+        value: 0.95,
+        attributes: { min: 0, max: 1, step: 0.05 },
+        name: "Diffuse",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n,
+    },
+    "skyColor": {
+        type: "color",
+        value: colorToVec("#50a0dc"),
+        name: "Sky color",
+        transformation: (n) => colorToVec(n),
+        inverseTransformation: (n) => vecToColor(n),
+    },
+    "waterColor": {
+        type: "color",
+        value: colorToVec("#20334d"),
+        name: "Water color",
+        transformation: (n) => colorToVec(n),
+        inverseTransformation: (n) => vecToColor(n),
+    },
+    "airColor": {
+        type: "color",
+        value: colorToVec("#202066"),
+        name: "Air color",
+        transformation: (n) => colorToVec(n),
+        inverseTransformation: (n) => vecToColor(n),
+    },
+    "angX": {
+        type: "range",
+        value: 10.0,
+        attributes: { min: -180, max: 180, step: 1 },
+        name: "Angle X",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n,
+    },
+    "angZ": {
+        type: "range",
+        value: 0.0,
+        attributes: { min: -180, max: 180, step: 1 },
+        name: "Angle Z",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n,
+    },
+    "interval": {
+        type: "range",
+        value: 100,
+        attributes: { min: 0, max: 200, step: 20 },
+        name: "Interval",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n,
+    },
+});
 
-        /** @type {number} */
-        this.scale = 200;
-
-        /** @type {number} */
-        this.g = 9.81;
-
-        /** @type {number} */
-        this.wind_x = 10.0;
-
-        /** @type {number} */
-        this.wind_y = 15.0;
-
-        /** @type {number} */
-        this.cutoff = 1.0;
-
-        /** @type {number} */
-        this.amp = 1 / 512 / 50; // TODO
-
-        /** @type {bool} */
-        this.changed = false;
-    }
-
-    update(key, value) {
-        this[key] = value;
-        this.changed = true;
-    }
-
-    getParameters() {
-        return {
-            "modes": {
-                type: "range",
-                value: Math.log2(this.modes),
-                attributes: { min: 4, max: 12, step: 1 },
-                name: "FFT size",
-                onChange: (n) => this.update("modes", 2**parseInt(n)),
-            },
-            "scale": {
-                type: "range",
-                value: this.scale,
-                attributes: { min: 50, max: 1000, step: 50 },
-                name: "Scale",
-                onChange: (n) => this.update("scale", parseInt(n)),
-            },
-            "wind_x": {
-                type: "range",
-                value: this.wind_x,
-                attributes: { min: 0, max: 50, step: 0.5 },
-                name: "Wind X",
-                onChange: (n) => this.update("wind_x", parseInt(n)),
-            },
-            "wind_y": {
-                type: "range",
-                value: this.wind_y,
-                attributes: { min: 0, max: 50, step: 0.5 },
-                name: "Wind Y",
-                onChange: (n) => this.update("wind_y", parseInt(n)),
-            },
-            "cutoff": {
-                type: "range",
-                value: this.cutoff,
-                attributes: { min: 0, max: 10, step: 0.5 },
-                name: "Cutoff",
-                onChange: (n) => this.update("cutoff", parseInt(n)),
-            },
-        };
-    }
-}
+const simulationParameters = new ParameterGroup({
+    "modes": {
+        type: "range",
+        value: 512,
+        attributes: { min: 4, max: 12, step: 1 },
+        name: "FFT size",
+        transformation: (n) => 2**parseInt(n),
+        inverseTransformation: (n) => Math.log2(n),
+    },
+    "scale": {
+        type: "range",
+        value: 200,
+        attributes: { min: 50, max: 1000, step: 50 },
+        name: "Scale",
+        transformation: (n) => parseInt(n),
+        inverseTransformation: (n) => n,
+    },
+    "wind_x": {
+        type: "range",
+        value: 10.0,
+        attributes: { min: 0, max: 50, step: 0.5 },
+        name: "Wind X",
+        transformation: (n) => parseInt(n),
+        inverseTransformation: (n) => n,
+    },
+    "wind_y": {
+        type: "range",
+        value: 15.0,
+        attributes: { min: 0, max: 50, step: 0.5 },
+        name: "Wind Y",
+        transformation: (n) => parseInt(n),
+        inverseTransformation: (n) => n,
+    },
+    "cutoff": {
+        type: "range",
+        value: 1.0,
+        attributes: { min: 0, max: 10, step: 0.5 },
+        name: "Cutoff",
+        transformation: (n) => parseInt(n),
+        inverseTransformation: (n) => n,
+    },
+});
 
 
-export { Program, SimulationParameters, ViewParameters, createTexture, createFramebuffer, };
+export { Program, simulationParameters, viewParameters, createTexture, createFramebuffer, };

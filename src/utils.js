@@ -1,3 +1,11 @@
+const WEBGL_UNIFORM_SETTERS = {
+    [WebGL2RenderingContext.INT]        : "uniform1i",
+    [WebGL2RenderingContext.FLOAT]      : "uniform1f",
+    [WebGL2RenderingContext.FLOAT_VEC2] : "uniform2fv",
+    [WebGL2RenderingContext.FLOAT_VEC3] : "uniform3fv",
+    [WebGL2RenderingContext.SAMPLER_2D] : "uniform1i",
+};
+
 /**
  * @param {!WebGLRenderingContext} gl
  * @param {string} source
@@ -89,7 +97,19 @@ const Program = class {
         for (var i = 0; i < n; i++) {
             var uniform = gl.getActiveUniform(this.prog, i);
             var location = gl.getUniformLocation(this.prog, uniform.name);
-            this.uniforms[uniform.name] = location;
+            this.uniforms[uniform.name] = [location, uniform.type];
+        }
+    }
+
+    /**
+     * @param {WebGLRenderingContext} gl
+     * @param {object} uniformValues
+     */
+    setUniforms(gl, uniformValues) {
+        let location, type, setter;
+        for (const key of Object.keys(uniformValues)) {
+            [location, type] = this.uniforms[key];
+            gl[WEBGL_UNIFORM_SETTERS[type]](location, uniformValues[key]);
         }
     }
 }

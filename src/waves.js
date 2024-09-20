@@ -60,9 +60,7 @@ const ATTRIBUTE_LOCATIONS = {
 function fftStep(gl, prog, inputTextureUnit, outputBuffer, size, subSize, horizontal) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, outputBuffer);
     gl.viewport(0, 0, size, size);
-    gl.uniform1i(prog.uniforms["u_input"], inputTextureUnit);
-    gl.uniform1f(prog.uniforms["u_subsize"], subSize);
-    gl.uniform1i(prog.uniforms["u_horizontal"], horizontal);
+    prog.setUniforms(gl, {"u_input": inputTextureUnit, "u_subsize": subSize, "u_horizontal": horizontal});
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
@@ -74,7 +72,7 @@ function fftStep(gl, prog, inputTextureUnit, outputBuffer, size, subSize, horizo
  */
 function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
     gl.useProgram(prog.prog)
-    gl.uniform1f(prog.uniforms["u_size"], params.modes);
+    prog.setUniforms(gl, {"u_size": params.modes});
 
     let inputs = [TEXTURE_UNITS.tempB, TEXTURE_UNITS.tempA];
     let outputs = [FRAMEBUFFERS.tempA, FRAMEBUFFERS.tempB];
@@ -170,15 +168,19 @@ const Waves = class {
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, indices3D, this.gl.STATIC_DRAW);
 
         this.gl.useProgram(this.programs.output.prog);
-        this.gl.uniform1i(this.programs.output.uniforms["u_type"], 0);
-        this.gl.uniform1f(this.programs.output.uniforms["u_offset"], 0.5);
-        this.gl.uniform1f(this.programs.output.uniforms["u_scale"], 1);
-        this.gl.uniform2f(this.programs.output.uniforms["u_coordscale"], 1, 1);
-        this.gl.uniform2f(this.programs.output.uniforms["u_modes"], this.params.modes, this.params.modes);
+        this.programs.output.setUniforms(this.gl, {
+            "u_type": 0,
+            "u_offset": 0.5,
+            "u_scale": 1,
+            "u_coordscale": [1, 1],
+            "u_modes": [this.params.modes, this.params.modes],
+        });
 
         this.gl.useProgram(this.programs.timeEvolution.prog);
-        this.gl.uniform2f(this.programs.timeEvolution.uniforms["u_modes"], this.params.modes, this.params.modes);
-        this.gl.uniform2f(this.programs.timeEvolution.uniforms["u_scales"], this.params.scale, this.params.scale);
+        this.programs.timeEvolution.setUniforms(this.gl, {
+            "u_modes": [this.params.modes, this.params.modes],
+            "u_scales": [this.params.scale, this.params.scale],
+        });
 
         for (const name of Object.keys(TEXTURE_UNITS)) {
             FRAMEBUFFERS[name] = createFramebuffer(
@@ -201,12 +203,14 @@ const Waves = class {
         this.gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.position, 2, this.gl.FLOAT, false, 0, 0);
 
         this.gl.useProgram(this.programs.init.prog);
-        this.gl.uniform2f(this.programs.init.uniforms["u_modes"], this.params.modes, this.params.modes);
-        this.gl.uniform2f(this.programs.init.uniforms["u_scales"], this.params.scale, this.params.scale);
-        this.gl.uniform2f(this.programs.init.uniforms["u_omega"], this.params.wind_x, this.params.wind_y);
-        this.gl.uniform2f(this.programs.init.uniforms["u_seed"], Math.random(), Math.random());
-        this.gl.uniform1f(this.programs.init.uniforms["u_cutoff"], this.params.cutoff);
-        this.gl.uniform1f(this.programs.init.uniforms["u_amp"], this.params.amp);
+        this.programs.init.setUniforms(this.gl, {
+            "u_modes": [this.params.modes, this.params.modes],
+            "u_scales": [this.params.scale, this.params.scale],
+            "u_omega": [this.params.wind_x, this.params.wind_y],
+            "u_seed": [Math.random(), Math.random()],
+            "u_cutoff": this.params.cutoff,
+            "u_amp": this.params.amp,
+        });
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, FRAMEBUFFERS["amplitudes"]);
         this.gl.viewport(0, 0, this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
@@ -215,25 +219,26 @@ const Waves = class {
     }
 
     initView () {
-        this.gl.useProgram(this.programs.output3D.prog);
-        this.gl.uniform2f(this.programs.output3D.uniforms["u_modes"], this.params.modes, this.params.modes);
-        this.gl.uniform2f(this.programs.output3D.uniforms["u_scales"], this.params.scale, this.params.scale);
-        this.gl.uniform1f(this.programs.output3D.uniforms["u_n1"], 1.0);
-        this.gl.uniform1f(this.programs.output3D.uniforms["u_n2"], 1.34);
-        this.gl.uniform1f(this.programs.output3D.uniforms["u_diffuse"], this.view.diffuse);
-        this.gl.uniform3f(this.programs.output3D.uniforms["u_lightdir"], 0.0, 30.0, 100.0);
-        this.gl.uniform3f(this.programs.output3D.uniforms["u_camerapos"], 0.5, 0.5, 3.0);
-        this.gl.uniform3f(this.programs.output3D.uniforms["u_skycolor"], ...this.view.skyColor);
-        this.gl.uniform3f(this.programs.output3D.uniforms["u_watercolor"], ...this.view.waterColor);
-        this.gl.uniform3f(this.programs.output3D.uniforms["u_aircolor"], ...this.view.airColor);
-
         const aspectRatio = this.gl.canvas.width / this.gl.canvas.height;
         const x = 0.8;
         const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
-        this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_projection"], false, projMat);
-
         const viewMat = mat.rotateX(mat.rotationZ(Math.PI / 180 * this.view.angZ), Math.PI / 180 * this.view.angX);
-        this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_view"], false, viewMat);
+
+        this.gl.useProgram(this.programs.output3D.prog);
+        this.programs.output3D.setUniforms(this.gl, {
+            "u_modes": [this.params.modes, this.params.modes],
+            "u_scales": [this.params.scale, this.params.scale],
+            "u_n1": 1.0,
+            "u_n2": 1.34,
+            "u_diffuse": this.view.diffuse,
+            "u_lightdir": [0.0, 30.0, 100.0],
+            "u_camerapos": [0.5, 0.5, 3.0],
+            "u_skycolor": this.view.skyColor,
+            "u_watercolor": this.view.waterColor,
+            "u_aircolor": this.view.airColor,
+        });
+        this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_projection"][0], false, projMat);
+        this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_view"][0], false, viewMat);
 
         this.view.changed = false;
     }
@@ -250,14 +255,13 @@ const Waves = class {
 
         // TODO: Probably no need to run this every time
         this.gl.useProgram(this.programs.conjugation.prog);
-        this.gl.uniform1i(this.programs.conjugation.uniforms["u_input"], TEXTURE_UNITS.amplitudes);
+        this.programs.conjugation.setUniforms(this.gl, {"u_input": TEXTURE_UNITS.amplitudes});
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, FRAMEBUFFERS["outputA"]);
         this.gl.viewport(0, 0, this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
         this.gl.useProgram(this.programs.timeEvolution.prog);
-        this.gl.uniform1i(this.programs.timeEvolution.uniforms["u_input"], TEXTURE_UNITS.outputA);
-        this.gl.uniform1f(this.programs.timeEvolution.uniforms["u_t"], this.t);
+        this.programs.timeEvolution.setUniforms(this.gl, {"u_input": TEXTURE_UNITS.outputA, "u_t": this.t});
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, FRAMEBUFFERS["outputB"]);
         this.gl.viewport(0, 0, this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
@@ -277,7 +281,7 @@ const Waves = class {
             this.initView();
         }
         this.gl.useProgram(this.programs.output3D.prog);
-        this.gl.uniform1i(this.programs.output3D.uniforms["u_displacements"], TEXTURE_UNITS.outputB);
+        this.programs.output3D.setUniforms(this.gl, {"u_displacements": TEXTURE_UNITS.outputB});
 
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null); // render to canvas
         this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);

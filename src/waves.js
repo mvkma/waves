@@ -239,7 +239,12 @@ const Waves = class {
         const aspectRatio = this.gl.canvas.width / this.gl.canvas.height;
         const x = 0.8;
         const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
-        const viewMat = mat.rotateX(mat.rotationZ(Math.PI / 180 * this.view.angZ), Math.PI / 180 * this.view.angX);
+
+        let viewMat = mat.identity(4);
+        viewMat = mat.scale(viewMat, 1, 1, 1 / 5);
+        viewMat = mat.rotateZ(viewMat, Math.PI / 180 * this.view.angZ);
+        viewMat = mat.rotateX(viewMat, Math.PI / 180 * this.view.angX);
+        viewMat = mat.translate(viewMat, 0.0, 0.0, -0.5);
 
         this.gl.useProgram(this.programs.output3D.prog);
         this.programs.output3D.setUniforms(this.gl, {
@@ -248,8 +253,8 @@ const Waves = class {
             "u_n1": 1.0,
             "u_n2": 1.34,
             "u_diffuse": this.view.diffuse,
-            "u_lightdir": [0.0, 30.0, 100.0],
-            "u_camerapos": [0.5, 0.5, 3.0],
+            "u_lightdir": [30.0, 0.0, 20.0],
+            "u_camerapos": [0.0, 0.0, 3.0],
             "u_skycolor": this.view.skyColor,
             "u_watercolor": this.view.waterColor,
             "u_aircolor": this.view.airColor,

@@ -46,7 +46,7 @@ void main() {
     dis = get_displacement(a_mappos);
 
     v_mappos = a_mappos;
-    v_vertexpos = vec3((a_vertexpos.xy + 1.0 * dis.xy) / u_scales * 2.0, -0.5 + dis.z / 5.0);
+    v_vertexpos = vec3((a_vertexpos.xy + 1.0 * dis.xy) / u_scales * 2.0, dis.z);
 
     gl_Position = u_projection * u_view * vec4(v_vertexpos, 1.0);
 }
@@ -355,7 +355,6 @@ vec2 k;
 vec2 omega;
 
 void main() {
-    // k = v_xy.xy * 2.0 * PI / vec2(u_scale_x, u_scale_y);
     k = v_xy.xy * PI * u_modes / u_scales;
 
     pp = phillips( k, u_omega, u_omega.x * u_omega.x + u_omega.y * u_omega.y, u_cutoff);

@@ -4,7 +4,7 @@
  * @returns {Float32Array}
  */
 const identity = function (n) {
-    let mat = new Float32Array({length: n * n});
+    let mat = new Float32Array(n * n, 0.0);
 
     for (let k = 0; k < n; k++) {
         mat[k * n + k] = 1.0;
@@ -108,6 +108,22 @@ const translation = function (x, y, z) {
 }
 
 /**
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ *
+ * @returns {Float32Array}
+ */
+const scaling = function (x, y, z) {
+    return new Float32Array([
+          x, 0.0, 0.0, 0.0,
+        0.0,   y, 0.0, 0.0,
+        0.0, 0.0,   z, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    ]);
+}
+
+/**
  * @param {number} r
  * @param {number} l
  * @param {number} t
@@ -168,6 +184,18 @@ const translate = function (matrix, x, y, z) {
     return multiply(matrix, translation(x, y, z));
 }
 
+/**
+ * @param {Float32Array} matrix
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ *
+ * @returns {Float32Array}
+ */
+const scale = function (matrix, x, y, z) {
+    return multiply(matrix, scaling(x, y, z));
+}
+
 export {
     identity,
     multiply,
@@ -175,9 +203,11 @@ export {
     rotateY,
     rotateZ,
     translate,
+    scale,
     perspectiveProjection,
     rotationX,
     rotationY,
     rotationZ,
     translation,
+    scaling,
 };

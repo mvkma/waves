@@ -129,7 +129,7 @@ function colorToVec(color) {
  * @return {string}
  */
 function vecToColor(vec) {
-    return "#" + vec.map(x => (x * 255).toString(16)).reduce((a, b) => a + b, "");
+    return "#" + vec.map(x => Math.round(x * 255).toString(16).padStart(2, "0")).reduce((a, b) => a + b, "");
 }
 
 const ParameterGroup = class {
@@ -169,21 +169,21 @@ const viewParameters = new ParameterGroup({
     },
     "skyColor": {
         type: "color",
-        value: colorToVec("#50a0dc"),
+        value: [0.69, 0.84, 1.0], //colorToVec("#50a0dc"),
         name: "Sky color",
         transformation: (n) => colorToVec(n),
         inverseTransformation: (n) => vecToColor(n),
     },
     "waterColor": {
         type: "color",
-        value: colorToVec("#20334d"),
+        value: [0.0, 0.2, 0.3], // colorToVec("#20334d"),
         name: "Water color",
         transformation: (n) => colorToVec(n),
         inverseTransformation: (n) => vecToColor(n),
     },
     "airColor": {
         type: "color",
-        value: colorToVec("#202066"),
+        value: [0.1, 0.1, 0.1], // colorToVec("#202066"),
         name: "Air color",
         transformation: (n) => colorToVec(n),
         inverseTransformation: (n) => vecToColor(n),

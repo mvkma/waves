@@ -25,7 +25,7 @@ uniform vec2 u_modes;
 uniform vec2 u_scales;
 
 varying vec2 v_mappos;
-// varying vec3 v_normal;
+varying vec3 v_vertexpos;
 
 float phase;
 vec4 dis;
@@ -44,20 +44,11 @@ vec4 get_displacement(vec2 pos) {
 
 void main() {
     dis = get_displacement(a_mappos);
-    gl_Position = u_projection * u_view * vec4((a_vertexpos.xy + 1.0 * dis.xy) / u_scales * 2.0, -0.5 + dis.z / 5.0, 1);
+
     v_mappos = a_mappos;
+    v_vertexpos = vec3((a_vertexpos.xy + 1.0 * dis.xy) / u_scales * 2.0, -0.5 + dis.z / 5.0);
 
-    // TODO: verify that this is correct
-    // vec3 vr = get_displacement(a_mappos + vec2( 0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3( 2.0 / (u_modes.x - 1.0), 0, 0);
-    // vr = mat3(u_projection) * mat3(u_view) * vr;
-    // vec3 vl = get_displacement(a_mappos + vec2(-0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3(-2.0 / (u_modes.x - 1.0), 0, 0);
-    // vl = mat3(u_projection) * mat3(u_view) * vl;
-    // vec3 vb = get_displacement(a_mappos + vec2(0,  0.5 / u_modes.y)).xyz - dis.xyz + vec3(0,  2.0 / (u_modes.y - 1.0), 0);
-    // vb = mat3(u_projection) * mat3(u_view) * vb;
-    // vec3 vt = get_displacement(a_mappos + vec2(0, -0.5 / u_modes.y)).xyz - dis.xyz + vec3(0, -2.0 / (u_modes.y - 1.0), 0);
-    // vt = mat3(u_projection) * mat3(u_view) * vt;
-
-    // v_normal = normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr));
+    gl_Position = u_projection * u_view * vec4(v_vertexpos, 1.0);
 }
 `;
 
@@ -78,6 +69,7 @@ uniform vec3 u_watercolor;
 uniform vec3 u_aircolor;
 
 varying vec2 v_mappos;
+varying vec3 v_vertexpos;
 
 float costh;
 float refl0;
@@ -94,7 +86,7 @@ void main() {
     refl0 = pow((u_n1 - u_n2) / (u_n1 + u_n2), 2.0);
     refl = refl0 + (1.0 - refl0) * pow(1.0 - costh, 5.0);
 
-    dist = exp(-u_diffuse * length(vec3(v_mappos, 0) - u_camerapos));
+    dist = exp(-u_diffuse * length(v_vertexpos - u_camerapos));
 
     color = dist * (refl * u_skycolor + (1.0 - refl) * u_watercolor) + (1.0 - dist) * u_aircolor;
 
@@ -142,10 +134,10 @@ void main() {
 
     mid = get_displacement(texcoord);
 
-    vr = get_displacement(texcoord + dx) - mid + vec3(dx * u_scales.x, 0.0);
-    vl = get_displacement(texcoord - dx) - mid - vec3(dx * u_scales.x, 0.0);
-    vb = get_displacement(texcoord + dx) - mid + vec3(dy * u_scales.y, 0.0);
-    vt = get_displacement(texcoord - dx) - mid - vec3(dy * u_scales.y, 0.0);
+    vr = get_displacement(texcoord + dx) - mid + vec3(dx * 1.0 * u_scales.x / u_scales.x, 0.0);
+    vl = get_displacement(texcoord - dx) - mid - vec3(dx * 1.0 * u_scales.x / u_scales.x, 0.0);
+    vb = get_displacement(texcoord + dx) - mid + vec3(dy * 1.0 * u_scales.y / u_scales.y, 0.0);
+    vt = get_displacement(texcoord - dx) - mid - vec3(dy * 1.0 * u_scales.y / u_scales.y, 0.0);
 
     gl_FragColor = vec4(normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr)), 1.0);
 }

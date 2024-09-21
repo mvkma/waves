@@ -9,6 +9,7 @@ import {
 import {
     vertexShader,
     vertexShader3D,
+    normalShader,
     greyscaleShader,
     conjugationShader,
     timeEvolutionShader,
@@ -117,6 +118,7 @@ const Waves = class {
             init: new Program(this.gl, vertexShader, waveInitShader, bindings2d),
             conjugation: new Program(this.gl, vertexShader, conjugationShader, bindings2d),
             timeEvolution: new Program(this.gl, vertexShader, timeEvolutionShader, bindings2d),
+            normals: new Program(this.gl, vertexShader, normalShader, bindings2d),
             fft: new Program(this.gl, vertexShader, fftShader, bindings2d),
             output: new Program(this.gl, vertexShader, greyscaleShader, bindings2d),
             output3D: new Program(this.gl, vertexShader3D, oceanSurfaceShader3D, bindings3d),
@@ -188,6 +190,12 @@ const Waves = class {
 
         this.gl.useProgram(this.programs.timeEvolution.prog);
         this.programs.timeEvolution.setUniforms(this.gl, {
+            "u_modes": [this.params.modes, this.params.modes],
+            "u_scales": [this.params.scale, this.params.scale],
+        });
+
+        this.gl.useProgram(this.programs.normals.prog);
+        this.programs.normals.setUniforms(this.gl, {
             "u_modes": [this.params.modes, this.params.modes],
             "u_scales": [this.params.scale, this.params.scale],
         });
@@ -275,6 +283,12 @@ const Waves = class {
 
         fft(this.gl, this.programs.fft, TEXTURE_UNITS.outputB, FRAMEBUFFERS["outputB"], this.params);
 
+        // Normals
+        this.gl.useProgram(this.programs.normals.prog);
+        this.programs.normals.setUniforms(this.gl, {"u_displacements": TEXTURE_UNITS.outputB});
+        this.useFramebuffer("outputA", this.params.modes, this.params.modes);
+        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
         this.gl.disableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
 
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffers["positions3D"]);
@@ -288,7 +302,10 @@ const Waves = class {
             this.initView();
         }
         this.gl.useProgram(this.programs.output3D.prog);
-        this.programs.output3D.setUniforms(this.gl, {"u_displacements": TEXTURE_UNITS.outputB});
+        this.programs.output3D.setUniforms(this.gl, {
+            "u_displacements": TEXTURE_UNITS.outputB,
+            "u_normals": TEXTURE_UNITS.outputA,
+        });
 
         this.useFramebuffer("canvas", this.gl.canvas.width, this.gl.canvas.height);
         //this.gl.enable(this.gl.DEPTH_TEST);

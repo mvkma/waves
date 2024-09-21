@@ -25,7 +25,7 @@ uniform vec2 u_modes;
 uniform vec2 u_scales;
 
 varying vec2 v_mappos;
-varying vec3 v_normal;
+// varying vec3 v_normal;
 
 float phase;
 vec4 dis;
@@ -48,16 +48,16 @@ void main() {
     v_mappos = a_mappos;
 
     // TODO: verify that this is correct
-    vec3 vr = get_displacement(a_mappos + vec2( 0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3( 2.0 / (u_modes.x - 1.0), 0, 0);
-    vr = mat3(u_projection) * mat3(u_view) * vr;
-    vec3 vl = get_displacement(a_mappos + vec2(-0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3(-2.0 / (u_modes.x - 1.0), 0, 0);
-    vl = mat3(u_projection) * mat3(u_view) * vl;
-    vec3 vb = get_displacement(a_mappos + vec2(0,  0.5 / u_modes.y)).xyz - dis.xyz + vec3(0,  2.0 / (u_modes.y - 1.0), 0);
-    vb = mat3(u_projection) * mat3(u_view) * vb;
-    vec3 vt = get_displacement(a_mappos + vec2(0, -0.5 / u_modes.y)).xyz - dis.xyz + vec3(0, -2.0 / (u_modes.y - 1.0), 0);
-    vt = mat3(u_projection) * mat3(u_view) * vt;
+    // vec3 vr = get_displacement(a_mappos + vec2( 0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3( 2.0 / (u_modes.x - 1.0), 0, 0);
+    // vr = mat3(u_projection) * mat3(u_view) * vr;
+    // vec3 vl = get_displacement(a_mappos + vec2(-0.5 / u_modes.x, 0)).xyz - dis.xyz + vec3(-2.0 / (u_modes.x - 1.0), 0, 0);
+    // vl = mat3(u_projection) * mat3(u_view) * vl;
+    // vec3 vb = get_displacement(a_mappos + vec2(0,  0.5 / u_modes.y)).xyz - dis.xyz + vec3(0,  2.0 / (u_modes.y - 1.0), 0);
+    // vb = mat3(u_projection) * mat3(u_view) * vb;
+    // vec3 vt = get_displacement(a_mappos + vec2(0, -0.5 / u_modes.y)).xyz - dis.xyz + vec3(0, -2.0 / (u_modes.y - 1.0), 0);
+    // vt = mat3(u_projection) * mat3(u_view) * vt;
 
-    v_normal = normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr));
+    // v_normal = normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr));
 }
 `;
 
@@ -66,7 +66,7 @@ const oceanSurfaceShader3D = `
 
 precision highp float;
 
-uniform highp sampler2D u_displacements;
+uniform highp sampler2D u_normals;
 
 uniform float u_n1;
 uniform float u_n2;
@@ -78,17 +78,19 @@ uniform vec3 u_watercolor;
 uniform vec3 u_aircolor;
 
 varying vec2 v_mappos;
-varying vec3 v_normal;
 
 float costh;
 float refl0;
 float refl;
 float dist;
 vec3 color;
+vec3 normal;
 
 void main() {
+    normal = texture2D(u_normals, v_mappos).xyz;
+
     // Schlick's approximation
-    costh = dot(normalize(u_lightdir), v_normal);
+    costh = dot(normalize(u_lightdir), normal);
     refl0 = pow((u_n1 - u_n2) / (u_n1 + u_n2), 2.0);
     refl = refl0 + (1.0 - refl0) * pow(1.0 - costh, 5.0);
 
@@ -97,6 +99,55 @@ void main() {
     color = dist * (refl * u_skycolor + (1.0 - refl) * u_watercolor) + (1.0 - dist) * u_aircolor;
 
     gl_FragColor = vec4(color, 1.0);
+}
+`;
+
+const normalShader = `
+#define PI 3.1415926538
+
+precision highp float;
+
+uniform highp sampler2D u_displacements;
+uniform vec2 u_modes;
+uniform vec2 u_scales;
+
+varying vec4 v_xy;
+
+vec2 texcoord;
+vec2 dx;
+vec2 dy;
+vec3 mid;
+vec3 vr;
+vec3 vl;
+vec3 vb;
+vec3 vt;
+
+vec2 mul_complex(vec2 a, vec2 b) {
+    return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
+}
+
+vec3 get_displacement(vec2 pos) {
+    vec4 res = texture2D(u_displacements, pos);
+    float arg = -PI * (floor(pos.x * u_modes.x) / u_modes.x + floor(pos.y * u_modes.y) / u_modes.y);
+    vec2 phase = vec2(cos(arg), sin(arg));
+
+    return vec4(mul_complex(res.xy, phase), mul_complex(res.zw, phase)).zwx;
+}
+
+void main() {
+    texcoord = (v_xy.xy * 0.5 + 0.5);
+
+    dx = vec2(1.0 / u_modes.x, 0.0);
+    dy = vec2(0.0, 1.0 / u_modes.y);
+
+    mid = get_displacement(texcoord);
+
+    vr = get_displacement(texcoord + dx) - mid + vec3(dx * u_scales.x, 0.0);
+    vl = get_displacement(texcoord - dx) - mid - vec3(dx * u_scales.x, 0.0);
+    vb = get_displacement(texcoord + dx) - mid + vec3(dy * u_scales.y, 0.0);
+    vt = get_displacement(texcoord - dx) - mid - vec3(dy * u_scales.y, 0.0);
+
+    gl_FragColor = vec4(normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr)), 1.0);
 }
 `;
 
@@ -421,6 +472,7 @@ void main() {
 export {
     vertexShader,
     vertexShader3D,
+    normalShader,
     greyscaleShader,
     conjugationShader,
     timeEvolutionShader,

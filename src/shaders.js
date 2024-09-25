@@ -360,7 +360,7 @@ void main() {
     k.y = v_xy.y < 0.0 ? v_xy.y * 0.5 + 0.5 : v_xy.y * 0.5 - 0.5;
     k *= PI * u_modes / u_scales * 2.0;
 
-    pp = phillips( k, u_omega, u_omega.x * u_omega.x + u_omega.y * u_omega.y, u_cutoff);
+    pp = phillips(k, u_omega, u_omega.x * u_omega.x + u_omega.y * u_omega.y, u_cutoff);
 
     re = pp * u_amp * gaussian(v_xy.xy - u_seed);
     im = pp * u_amp * gaussian(v_xy.xy + u_seed);
@@ -401,11 +401,11 @@ void main() {
     kp = ( v_xy.xy * 0.5 + 0.5);
     km = (-v_xy.xy * 0.5 + 0.5);
 
-    hp = 1.0 * texture2D(u_input, kp).xy / 2.0;
-    hm = 1.0 * texture2D(u_input, km).xy / 2.0;
+    hp = texture2D(u_input, kp).xy / 2.0;
+    hm = texture2D(u_input, km).xy / 2.0;
 
     // Initialize with random phases
-    phase = vec2(cos(PI * random(kp)), sin(PI * random(kp)));
+    phase = vec2(cos(2.0 * PI * random(kp)), sin(2.0 * PI * random(kp)));
     res = mul_complex(hp, phase) + mul_complex(conjugate(hm), conjugate(phase));
 
     gl_FragColor = vec4(res, 1, 1);
@@ -431,8 +431,6 @@ vec2 res;
 vec2 dis;
 vec2 hp;
 vec2 hm;
-vec2 kp;
-vec2 km;
 vec2 k;
 
 vec2 mul_complex(vec2 a, vec2 b) {
@@ -444,23 +442,23 @@ vec2 conjugate(vec2 a) {
 }
 
 void main() {
-    kp = ( v_xy.xy * 0.5 + 0.5);
-    km = (-v_xy.xy * 0.5 + 0.5);
-
     // 0 ..., 0.5, -0.5, ..., 0
     k.x = v_xy.x < 0.0 ? v_xy.x * 0.5 + 0.5 : v_xy.x * 0.5 - 0.5;
     k.y = v_xy.y < 0.0 ? v_xy.y * 0.5 + 0.5 : v_xy.y * 0.5 - 0.5;
     k *= PI * u_modes / u_scales * 2.0;
     omegat = sqrt(G * length(k)) * u_t;
-
-    hp = 1.0 * texture2D(u_input, kp).xy / 2.0;
-    hm = 1.0 * texture2D(u_input, km).xy / 2.0;
-
     phase = vec2(cos(omegat), sin(omegat));
 
-    res = mul_complex(hp, phase) + mul_complex(conjugate(hm), conjugate(phase));
+    hp = texture2D(u_input,  v_xy.xy * 0.5 + 0.5).xy / 2.0;
+    hm = texture2D(u_input, -v_xy.xy * 0.5 + 0.5).xy / 2.0;
 
-    dis = mul_complex(normalize(k).x * res, vec2(0, -1)) + normalize(k).y * res;
+    if (k.x == 0.0 && k.y == 0.0) {
+        res = vec2(0.0, 0.0);
+        dis = vec2(0.0, 0.0);
+    } else {
+        res = mul_complex(hp, phase) + mul_complex(conjugate(hm), conjugate(phase));
+        dis = mul_complex(normalize(k).x * res, vec2(0, -1)) + normalize(k).y * res;
+    }
 
     gl_FragColor = vec4(res, dis);
 }

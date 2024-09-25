@@ -244,20 +244,18 @@ void main() {
         jx = (v_xy.x * 0.5 + 0.5) * u_size;
     }
 
-    ratio = u_size / u_subsize; // 2**(k - i)
-    ix_even = mod(mod(ix, ratio / 2.0) + ratio * floor(ix / (ratio / 2.0)), u_size);
-    ix_odd = ix_even + ratio / 2.0;
+    ix_even = floor(ix / u_subsize) * (u_subsize / 2.0) + mod(ix, u_subsize / 2.0);
+    ix_odd = ix_even + u_size / 2.0;
 
-    arg_twiddle = -2.0 * PI * floor(ix / (ratio / 2.0)) / (2.0 * u_subsize);
+    arg_twiddle = -2.0 * PI * ix / u_subsize;
     twiddle = vec2(cos(arg_twiddle), sin(arg_twiddle));
 
-    offset = vec2(0.0, 0.0);
     if (u_horizontal == 1) {
-        even = texture2D(u_input, (vec2(ix_even, jx) + offset) / u_size).rgba;
-        odd  = texture2D(u_input, (vec2(ix_odd , jx) + offset) / u_size).rgba;
+        even = texture2D(u_input, vec2(ix_even, jx) / u_size).rgba;
+        odd  = texture2D(u_input, vec2(ix_odd , jx) / u_size).rgba;
     } else {
-        even = texture2D(u_input, (vec2(jx, ix_even) + offset) / u_size).rgba;
-        odd  = texture2D(u_input, (vec2(jx, ix_odd ) + offset) / u_size).rgba;
+        even = texture2D(u_input, vec2(jx, ix_even) / u_size).rgba;
+        odd  = texture2D(u_input, vec2(jx, ix_odd ) / u_size).rgba;
     }
 
     res = even.xy + mul_complex(twiddle, odd.xy);

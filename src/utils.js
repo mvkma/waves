@@ -108,6 +108,10 @@ const Program = class {
     setUniforms(gl, uniformValues) {
         let location, type;
         for (const key of Object.keys(uniformValues)) {
+            if (!this.uniforms.hasOwnProperty(key)) {
+                console.log(`uniform does not exist: ${key}`);
+                continue;
+            }
             [location, type] = this.uniforms[key];
             gl[WEBGL_UNIFORM_SETTERS[type]](location, uniformValues[key]);
         }

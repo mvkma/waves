@@ -63,8 +63,9 @@ const ATTRIBUTE_LOCATIONS = {
  */
 function fftStep(gl, prog, inputTextureUnit, outputBuffer, size, subSize, horizontal) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, outputBuffer);
+    // TODO: this might be wrong
     gl.viewport(0, 0, size, size);
-    prog.setUniforms(gl, {"u_input": inputTextureUnit, "u_subsize": subSize, "u_horizontal": horizontal});
+    prog.setUniforms(gl, {"u_input": inputTextureUnit, "u_subsize": 2 * subSize, "u_horizontal": horizontal});
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
@@ -241,7 +242,7 @@ const Waves = class {
         const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
 
         let viewMat = mat.identity(4);
-        viewMat = mat.scale(viewMat, 1, 1, 1 / 5);
+        viewMat = mat.scale(viewMat, 1, 1, 1 / 3);
         viewMat = mat.rotateZ(viewMat, Math.PI / 180 * this.view.angZ);
         viewMat = mat.rotateX(viewMat, Math.PI / 180 * this.view.angX);
         viewMat = mat.translate(viewMat, 0.0, 0.0, -0.5);

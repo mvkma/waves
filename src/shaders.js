@@ -37,6 +37,7 @@ vec2 mul_complex(vec2 a, vec2 b) {
 vec4 get_displacement(vec2 pos) {
     vec4 res = texture2D(u_displacements, pos);
     float arg = -PI * (floor(pos.x * u_modes.x) / u_modes.x + floor(pos.y * u_modes.y) / u_modes.y);
+    // float arg = 0.0;
     vec2 phase = vec2(cos(arg), sin(arg));
 
     return vec4(mul_complex(res.xy, phase), mul_complex(res.zw, phase)).zwxy;
@@ -121,6 +122,7 @@ vec2 mul_complex(vec2 a, vec2 b) {
 vec3 get_displacement(vec2 pos) {
     vec4 res = texture2D(u_displacements, pos);
     float arg = -PI * (floor(pos.x * u_modes.x) / u_modes.x + floor(pos.y * u_modes.y) / u_modes.y);
+    // float arg = 0.0;
     vec2 phase = vec2(cos(arg), sin(arg));
 
     return vec4(mul_complex(res.xy, phase), mul_complex(res.zw, phase)).zwx;
@@ -259,12 +261,12 @@ void main() {
     }
 
     res = even.xy + mul_complex(twiddle, odd.xy);
-    arg_twiddle = -PI * (ix - u_size / 2.0);
-    res = mul_complex(res, vec2(cos(arg_twiddle), sin(arg_twiddle)));
+    // arg_twiddle = -PI * (ix - u_size / 2.0);
+    // res = mul_complex(res, vec2(cos(arg_twiddle), sin(arg_twiddle)));
 
     dis = even.zw + mul_complex(twiddle, odd.zw);
-    arg_twiddle = -PI * (ix - u_size / 2.0);
-    dis = mul_complex(dis, vec2(cos(arg_twiddle), sin(arg_twiddle)));
+    // arg_twiddle = -PI * (ix - u_size / 2.0);
+    // dis = mul_complex(dis, vec2(cos(arg_twiddle), sin(arg_twiddle)));
 
     gl_FragColor = vec4(res, dis);
 }
@@ -353,7 +355,10 @@ vec2 k;
 vec2 omega;
 
 void main() {
-    k = v_xy.xy * PI * u_modes / u_scales;
+    // 0 ..., 0.5, -0.5, ..., 0
+    k.x = v_xy.x < 0.0 ? v_xy.x * 0.5 + 0.5 : v_xy.x * 0.5 - 0.5;
+    k.y = v_xy.y < 0.0 ? v_xy.y * 0.5 + 0.5 : v_xy.y * 0.5 - 0.5;
+    k *= PI * u_modes / u_scales * 2.0;
 
     pp = phillips( k, u_omega, u_omega.x * u_omega.x + u_omega.y * u_omega.y, u_cutoff);
 
@@ -442,7 +447,10 @@ void main() {
     kp = ( v_xy.xy * 0.5 + 0.5);
     km = (-v_xy.xy * 0.5 + 0.5);
 
-    k = v_xy.xy * PI * u_modes / u_scales;
+    // 0 ..., 0.5, -0.5, ..., 0
+    k.x = v_xy.x < 0.0 ? v_xy.x * 0.5 + 0.5 : v_xy.x * 0.5 - 0.5;
+    k.y = v_xy.y < 0.0 ? v_xy.y * 0.5 + 0.5 : v_xy.y * 0.5 - 0.5;
+    k *= PI * u_modes / u_scales * 2.0;
     omegat = sqrt(G * length(k)) * u_t;
 
     hp = 1.0 * texture2D(u_input, kp).xy / 2.0;

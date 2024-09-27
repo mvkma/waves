@@ -189,6 +189,11 @@ const Waves = class {
             "u_modes": [this.params.modes, this.params.modes],
         });
 
+        this.gl.useProgram(this.programs.conjugation.prog);
+        this.programs.conjugation.setUniforms(this.gl, {
+            "u_modes": [this.params.modes, this.params.modes],
+        });
+
         this.gl.useProgram(this.programs.timeEvolution.prog);
         this.programs.timeEvolution.setUniforms(this.gl, {
             "u_modes": [this.params.modes, this.params.modes],

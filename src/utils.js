@@ -109,7 +109,7 @@ const Program = class {
         let location, type;
         for (const key of Object.keys(uniformValues)) {
             if (!this.uniforms.hasOwnProperty(key)) {
-                console.log(`uniform does not exist: ${key}`);
+                console.log(`uniform '${key}' does not exist`);
                 continue;
             }
             [location, type] = this.uniforms[key];

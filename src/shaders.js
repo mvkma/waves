@@ -35,19 +35,14 @@ vec2 mul_complex(vec2 a, vec2 b) {
 }
 
 vec4 get_displacement(vec2 pos) {
-    vec4 res = texture2D(u_displacements, pos);
-    float arg = -PI * (floor(pos.x * u_modes.x) / u_modes.x + floor(pos.y * u_modes.y) / u_modes.y);
-    // float arg = 0.0;
-    vec2 phase = vec2(cos(arg), sin(arg));
-
-    return vec4(mul_complex(res.xy, phase), mul_complex(res.zw, phase)).zwxy;
+    return texture2D(u_displacements, pos).zwxy;
 }
 
 void main() {
     dis = get_displacement(a_mappos);
 
     v_mappos = a_mappos;
-    v_vertexpos = vec3((a_vertexpos.xy + 1.0 * dis.xy) / u_scales * 2.0, dis.z);
+    v_vertexpos = vec3((a_vertexpos.xy + dis.xy) / u_scales * 2.0, dis.z);
 
     gl_Position = u_projection * u_view * vec4(v_vertexpos, 1.0);
 }
@@ -120,12 +115,7 @@ vec2 mul_complex(vec2 a, vec2 b) {
 }
 
 vec3 get_displacement(vec2 pos) {
-    vec4 res = texture2D(u_displacements, pos);
-    float arg = -PI * (floor(pos.x * u_modes.x) / u_modes.x + floor(pos.y * u_modes.y) / u_modes.y);
-    // float arg = 0.0;
-    vec2 phase = vec2(cos(arg), sin(arg));
-
-    return vec4(mul_complex(res.xy, phase), mul_complex(res.zw, phase)).zwx;
+    return texture2D(u_displacements, pos).zwx;
 }
 
 void main() {
@@ -239,11 +229,11 @@ vec2 mul_complex(vec2 a, vec2 b) {
 void main() {
 
     if (u_horizontal == 1) {
-        ix = (v_xy.x * 0.5 + 0.5) * u_size;
-        jx = (v_xy.y * 0.5 + 0.5) * u_size;
+        ix = gl_FragCoord.x - 0.5;
+        jx = gl_FragCoord.y - 0.5;
     } else {
-        ix = (v_xy.y * 0.5 + 0.5) * u_size;
-        jx = (v_xy.x * 0.5 + 0.5) * u_size;
+        ix = gl_FragCoord.y - 0.5;
+        jx = gl_FragCoord.x - 0.5;
     }
 
     ix_even = floor(ix / u_subsize) * (u_subsize / 2.0) + mod(ix, u_subsize / 2.0);
@@ -261,12 +251,7 @@ void main() {
     }
 
     res = even.xy + mul_complex(twiddle, odd.xy);
-    // arg_twiddle = -PI * (ix - u_size / 2.0);
-    // res = mul_complex(res, vec2(cos(arg_twiddle), sin(arg_twiddle)));
-
     dis = even.zw + mul_complex(twiddle, odd.zw);
-    // arg_twiddle = -PI * (ix - u_size / 2.0);
-    // dis = mul_complex(dis, vec2(cos(arg_twiddle), sin(arg_twiddle)));
 
     gl_FragColor = vec4(res, dis);
 }
@@ -355,10 +340,10 @@ vec2 k;
 vec2 omega;
 
 void main() {
-    // 0 ..., 0.5, -0.5, ..., 0
-    k.x = v_xy.x < 0.0 ? v_xy.x * 0.5 + 0.5 : v_xy.x * 0.5 - 0.5;
-    k.y = v_xy.y < 0.0 ? v_xy.y * 0.5 + 0.5 : v_xy.y * 0.5 - 0.5;
-    k *= PI * u_modes / u_scales * 2.0;
+    // 0, 1, ..., N / 2 - 1, -N / 2, -N / 2 + 1, ..., -1
+    k.x = gl_FragCoord.x < 0.5 * u_modes.x ? gl_FragCoord.x - 0.5 : gl_FragCoord.x - 0.5 - u_modes.x;
+    k.y = gl_FragCoord.y < 0.5 * u_modes.y ? gl_FragCoord.y - 0.5 : gl_FragCoord.y - 0.5 - u_modes.y;
+    k *= PI * 2.0 / u_scales;
 
     pp = phillips(k, u_omega, u_omega.x * u_omega.x + u_omega.y * u_omega.y, u_cutoff);
 
@@ -375,6 +360,7 @@ const conjugationShader = `
 precision highp float;
 
 uniform highp sampler2D u_input;
+uniform vec2 u_modes;
 
 varying vec4 v_xy;
 
@@ -382,8 +368,8 @@ vec2 phase;
 vec2 res;
 vec2 hp;
 vec2 hm;
-vec2 kp;
-vec2 km;
+vec2 ix_kp;
+vec2 ix_km;
 
 vec2 mul_complex(vec2 a, vec2 b) {
     return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
@@ -398,14 +384,16 @@ float random(vec2 v) {
 }
 
 void main() {
-    kp = ( v_xy.xy * 0.5 + 0.5);
-    km = (-v_xy.xy * 0.5 + 0.5);
+    ix_kp = gl_FragCoord.xy - 0.5;
+    ix_km = mod(u_modes - ix_kp, u_modes);
+    ix_kp /= u_modes;
+    ix_km /= u_modes;
 
-    hp = texture2D(u_input, kp).xy / 2.0;
-    hm = texture2D(u_input, km).xy / 2.0;
+    hp = texture2D(u_input, ix_kp).xy / 2.0;
+    hm = texture2D(u_input, ix_km).xy / 2.0;
 
     // Initialize with random phases
-    phase = vec2(cos(2.0 * PI * random(kp)), sin(2.0 * PI * random(kp)));
+    phase = vec2(cos(2.0 * PI * random(ix_kp)), sin(2.0 * PI * random(ix_kp)));
     res = mul_complex(hp, phase) + mul_complex(conjugate(hm), conjugate(phase));
 
     gl_FragColor = vec4(res, 1, 1);
@@ -431,6 +419,8 @@ vec2 res;
 vec2 dis;
 vec2 hp;
 vec2 hm;
+vec2 ix_kp;
+vec2 ix_km;
 vec2 k;
 
 vec2 mul_complex(vec2 a, vec2 b) {
@@ -442,15 +432,21 @@ vec2 conjugate(vec2 a) {
 }
 
 void main() {
-    // 0 ..., 0.5, -0.5, ..., 0
-    k.x = v_xy.x < 0.0 ? v_xy.x * 0.5 + 0.5 : v_xy.x * 0.5 - 0.5;
-    k.y = v_xy.y < 0.0 ? v_xy.y * 0.5 + 0.5 : v_xy.y * 0.5 - 0.5;
-    k *= PI * u_modes / u_scales * 2.0;
+    // 0, 1, ..., N / 2 - 1, -N / 2, -N / 2 + 1, ..., -1
+    k.x = gl_FragCoord.x < 0.5 * u_modes.x ? gl_FragCoord.x - 0.5 : gl_FragCoord.x - 0.5 - u_modes.x;
+    k.y = gl_FragCoord.y < 0.5 * u_modes.y ? gl_FragCoord.y - 0.5 : gl_FragCoord.y - 0.5 - u_modes.y;
+    k *= PI * 2.0 / u_scales;
+
     omegat = sqrt(G * length(k)) * u_t;
     phase = vec2(cos(omegat), sin(omegat));
 
-    hp = texture2D(u_input,  v_xy.xy * 0.5 + 0.5).xy / 2.0;
-    hm = texture2D(u_input, -v_xy.xy * 0.5 + 0.5).xy / 2.0;
+    ix_kp = gl_FragCoord.xy - 0.5;
+    ix_km = mod(u_modes - ix_kp, u_modes);
+    ix_kp /= u_modes;
+    ix_km /= u_modes;
+
+    hp = texture2D(u_input, ix_kp).xy / 2.0;
+    hm = texture2D(u_input, ix_km).xy / 2.0;
 
     if (k.x == 0.0 && k.y == 0.0) {
         res = vec2(0.0, 0.0);

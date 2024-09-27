@@ -240,7 +240,7 @@ const simulationParameters = new ParameterGroup({
         value: 10.0,
         attributes: { min: 0, max: 50, step: 0.5 },
         name: "Wind X",
-        transformation: (n) => parseInt(n),
+        transformation: (n) => parseFloat(n),
         inverseTransformation: (n) => n,
     },
     "wind_y": {
@@ -248,7 +248,7 @@ const simulationParameters = new ParameterGroup({
         value: 15.0,
         attributes: { min: 0, max: 50, step: 0.5 },
         name: "Wind Y",
-        transformation: (n) => parseInt(n),
+        transformation: (n) => parseFloat(n),
         inverseTransformation: (n) => n,
     },
     "cutoff": {
@@ -256,7 +256,15 @@ const simulationParameters = new ParameterGroup({
         value: 1.0,
         attributes: { min: 0, max: 10, step: 0.5 },
         name: "Cutoff",
-        transformation: (n) => parseInt(n),
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n,
+    },
+    "chopping": {
+        type: "range",
+        value: 1.0,
+        attributes: { min: 0, max: 2, step: 0.1 },
+        name: "Chopping",
+        transformation: (n) => parseFloat(n),
         inverseTransformation: (n) => n,
     },
 });

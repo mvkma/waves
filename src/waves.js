@@ -198,6 +198,7 @@ const Waves = class {
         this.programs.timeEvolution.setUniforms(this.gl, {
             "u_modes": [this.params.modes, this.params.modes],
             "u_scales": [this.params.scale, this.params.scale],
+            "u_chopping": this.params.chopping,
         });
 
         this.gl.useProgram(this.programs.normals.prog);
@@ -344,6 +345,13 @@ window.onload = function(ev) {
             }
         } else if (ev.key === "0" || ev.key === "1" || ev.key === "2" || ev.key === "3") {
             waves.channel = parseInt(ev.key);
+        }
+    });
+
+    document.querySelector("canvas").addEventListener("click", function (canvas, event) {
+        waves.paused = !waves.paused;
+        if (!waves.paused) {
+            window.requestAnimationFrame(() => waves.render());
         }
     });
 }

@@ -409,6 +409,7 @@ precision highp float;
 uniform highp sampler2D u_input;
 uniform vec2 u_modes;
 uniform vec2 u_scales;
+uniform float u_chopping;
 uniform float u_t;
 
 varying vec4 v_xy;
@@ -456,7 +457,7 @@ void main() {
         dis = mul_complex(normalize(k).x * res, vec2(0, -1)) + normalize(k).y * res;
     }
 
-    gl_FragColor = vec4(res, dis);
+    gl_FragColor = vec4(res, u_chopping * dis);
 }
 `;
 

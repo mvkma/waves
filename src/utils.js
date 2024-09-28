@@ -7,6 +7,16 @@ const WEBGL_UNIFORM_SETTERS = {
 };
 
 /**
+ * @param {object} shaderSources
+ *
+ * @return {object}
+ */
+async function loadShaderSources(shaderSources) {
+    const sources = await Promise.all(Object.values(shaderSources).map((url) => fetch(url).then(r => r.text())));
+    return Object.fromEntries(Object.keys(shaderSources).map((k, i) => [k, sources[i]]))
+}
+
+/**
  * @param {!WebGLRenderingContext} gl
  * @param {string} source
  * @param {number} type
@@ -270,4 +280,4 @@ const simulationParameters = new ParameterGroup({
 });
 
 
-export { Program, simulationParameters, viewParameters, createTexture, createFramebuffer, };
+export { Program, simulationParameters, viewParameters, createTexture, createFramebuffer, loadShaderSources };

@@ -4,26 +4,25 @@ import {
     viewParameters,
     createTexture,
     createFramebuffer,
+    loadShaderSources,
 } from "./utils.js";
-
-import {
-    vertexShader,
-    vertexShader3D,
-    normalShader,
-    greyscaleShader,
-    conjugationShader,
-    timeEvolutionShader,
-    fftShader,
-    oceanSurfaceShader3D,
-    sampleInitShader,
-    waveInitShader,
-} from "./shaders.js";
 
 import {
     buildControls,
 } from "./ui.js";
 
 import * as mat from "./matrices.js";
+
+const SHADER_SOURCES = {
+    vertexShader2D: "./src/vertex-shader-2d.glsl",
+    vertexShader3D: "./src/vertex-shader-3d.glsl",
+    fragmentShaderFFT: "./src/fragment-shader-fft.glsl",
+    fragmentShaderOcean: "./src/fragment-shader-ocean.glsl",
+    fragmentShaderNormals: "./src/fragment-shader-normals.glsl",
+    fragmentShaderConjugation: "./src/fragment-shader-conjugation.glsl",
+    fragmentShaderTime: "./src/fragment-shader-time.glsl",
+    fragmentShaderWaveInit: "./src/fragment-shader-wave-init.glsl",
+};
 
 const FLOAT_SIZE = Float32Array.BYTES_PER_ELEMENT;
 
@@ -95,7 +94,7 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
 }
 
 const Waves = class {
-    constructor () {
+    constructor (shaders) {
         this.gl = document.querySelector("canvas").getContext("webgl2");
 
         if(!this.gl.getExtension("EXT_color_buffer_float")) {
@@ -116,13 +115,12 @@ const Waves = class {
         };
 
         this.programs = {
-            init: new Program(this.gl, vertexShader, waveInitShader, bindings2d),
-            conjugation: new Program(this.gl, vertexShader, conjugationShader, bindings2d),
-            timeEvolution: new Program(this.gl, vertexShader, timeEvolutionShader, bindings2d),
-            normals: new Program(this.gl, vertexShader, normalShader, bindings2d),
-            fft: new Program(this.gl, vertexShader, fftShader, bindings2d),
-            output: new Program(this.gl, vertexShader, greyscaleShader, bindings2d),
-            output3D: new Program(this.gl, vertexShader3D, oceanSurfaceShader3D, bindings3d),
+            init: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderWaveInit"], bindings2d),
+            conjugation: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderConjugation"], bindings2d),
+            timeEvolution: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderTime"], bindings2d),
+            normals: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderNormals"], bindings2d),
+            fft: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderFFT"], bindings2d),
+            output3D: new Program(this.gl, shaders["vertexShader3D"], shaders["fragmentShaderOcean"], bindings3d),
         };
 
         this.buffers = { positions2D: this.gl.createBuffer(), positions3D: this.gl.createBuffer(), indices3D: this.gl.createBuffer() };
@@ -179,15 +177,6 @@ const Waves = class {
 
         this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.buffers["indices3D"]);
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, indices3D, this.gl.STATIC_DRAW);
-
-        this.gl.useProgram(this.programs.output.prog);
-        this.programs.output.setUniforms(this.gl, {
-            "u_type": 0,
-            "u_offset": 0.5,
-            "u_scale": 1,
-            "u_coordscale": [1, 1],
-            "u_modes": [this.params.modes, this.params.modes],
-        });
 
         this.gl.useProgram(this.programs.conjugation.prog);
         this.programs.conjugation.setUniforms(this.gl, {
@@ -332,10 +321,10 @@ const Waves = class {
     }
 }
 
-window.onload = function(ev) {
-    console.log("loaded");
+window.onload = async function(ev) {
+    const shaderSources = await loadShaderSources(SHADER_SOURCES);
 
-    const waves = new Waves();
+    const waves = new Waves(shaderSources);
 
     window.addEventListener("keyup", function (ev) {
         if (ev.key === " ") {

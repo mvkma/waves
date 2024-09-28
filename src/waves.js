@@ -1,3 +1,13 @@
+/*
+ * TODO
+ * - Understand the camera
+ * - Skybox
+ * - Repeat in x and y direction
+ * - Better controls
+ * - Fix sccaling of z-coordinates
+ * - Better default parameters for light and colors
+ * - Add ocean depth as a parameter
+ */
 import {
     Program,
     simulationParameters,

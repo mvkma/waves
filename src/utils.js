@@ -175,7 +175,7 @@ const ParameterGroup = class {
 const viewParameters = new ParameterGroup({
     "diffuse": {
         type: "range",
-        value: 0.95,
+        value: 0.3,
         attributes: { min: 0, max: 1, step: 0.05 },
         name: "Diffuse",
         transformation: (n) => parseFloat(n),
@@ -183,7 +183,7 @@ const viewParameters = new ParameterGroup({
     },
     "skyColor": {
         type: "color",
-        value: [0.69, 0.84, 1.0], //colorToVec("#50a0dc"),
+        value: [0.98, 0.94, 0.42], //colorToVec("#50a0dc"),
         name: "Sky color",
         transformation: (n) => colorToVec(n),
         inverseTransformation: (n) => vecToColor(n),
@@ -247,7 +247,7 @@ const simulationParameters = new ParameterGroup({
     },
     "wind_x": {
         type: "range",
-        value: 10.0,
+        value: 20.0,
         attributes: { min: 0, max: 50, step: 0.5 },
         name: "Wind X",
         transformation: (n) => parseFloat(n),
@@ -255,7 +255,7 @@ const simulationParameters = new ParameterGroup({
     },
     "wind_y": {
         type: "range",
-        value: 15.0,
+        value: 18.0,
         attributes: { min: 0, max: 50, step: 0.5 },
         name: "Wind Y",
         transformation: (n) => parseFloat(n),
@@ -263,7 +263,7 @@ const simulationParameters = new ParameterGroup({
     },
     "cutoff": {
         type: "range",
-        value: 1.0,
+        value: 0.5,
         attributes: { min: 0, max: 10, step: 0.5 },
         name: "Cutoff",
         transformation: (n) => parseFloat(n),
@@ -271,7 +271,7 @@ const simulationParameters = new ParameterGroup({
     },
     "chopping": {
         type: "range",
-        value: 1.0,
+        value: 0.7,
         attributes: { min: 0, max: 2, step: 0.1 },
         name: "Chopping",
         transformation: (n) => parseFloat(n),

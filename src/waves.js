@@ -259,8 +259,8 @@ const Waves = class {
             "u_n1": 1.0,
             "u_n2": 1.34,
             "u_diffuse": this.view.diffuse,
-            "u_lightdir": [30.0, 0.0, 20.0],
-            "u_camerapos": [0.0, 0.0, 3.0],
+            "u_lightdir": [1.0, 0.0, 1.0],
+            "u_camerapos": [0.0, 0.0, 0.0],
             "u_skycolor": this.view.skyColor,
             "u_watercolor": this.view.waterColor,
             "u_aircolor": this.view.airColor,
@@ -272,6 +272,8 @@ const Waves = class {
     }
 
     render () {
+        this.gl.disable(this.gl.DEPTH_TEST);
+
         if (this.params.changed) {
             this.initSimulation();
             this.initView();
@@ -319,10 +321,9 @@ const Waves = class {
         });
 
         this.useFramebuffer("canvas", this.gl.canvas.width, this.gl.canvas.height);
-        //this.gl.enable(this.gl.DEPTH_TEST);
-        //this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
         this.gl.drawElements(this.gl.TRIANGLES, 6 * (this.params.modes / 2 - 1) * (this.params.modes / 2 - 1), this.gl.UNSIGNED_SHORT, 0);
-        // this.gl.drawArrays(this.gl.TRIANTHIS.GLE_STRIP, 0, 4);
 
         this.t += 0.1;
         if (!this.paused) {

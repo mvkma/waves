@@ -140,6 +140,7 @@ const Waves = class {
 
         this.t = 0.0;
         this.channel = 0;
+        this.numIndices = 0;
         this.paused = true;
 
         console.log(this.view);
@@ -160,24 +161,27 @@ const Waves = class {
         console.log(`omegaMag / g = ${omegaMag / G}`);
         console.log(`(omegaMag / g) / dy = ${omegaMag / G / (this.params.scale / this.params.modes)}`);
 
-        let positions3D = new Float32Array({length: 5 * this.params.modes * this.params.modes / 4});
-        let indices3D = new Uint16Array({length: 6 * (this.params.modes / 2 - 1) * (this.params.modes / 2 - 1)});
+        const numSamples = this.params.modes / 2;
+        const repeat = 3;
+        let positions3D = new Float32Array({length: 5 * numSamples * numSamples});
+        let indices3D = new Uint16Array({length: 6 * (numSamples - 1) * (numSamples - 1)});
+        this.numIndices = indices3D.length;
 
-        for (let y = 0; y < this.params.modes / 2; y++) {
-            for (let x = 0; x < this.params.modes / 2; x++) {
-                let pos_ix = (y * this.params.modes / 2 + x) * 5;
-                positions3D[pos_ix + 0] = x / (this.params.modes / 2 - 1);
-                positions3D[pos_ix + 1] = y / (this.params.modes / 2 - 1);
-                positions3D[pos_ix + 2] = x / (this.params.modes / 2 - 1) * this.params.scale - this.params.scale / 2;
-                positions3D[pos_ix + 3] = y / (this.params.modes / 2 - 1) * this.params.scale - this.params.scale / 2;
+        for (let y = 0; y < numSamples; y++) {
+            for (let x = 0; x < numSamples; x++) {
+                let pos_ix = (y * numSamples + x) * 5;
+                positions3D[pos_ix + 0] = repeat * x / (numSamples - 1);
+                positions3D[pos_ix + 1] = repeat * y / (numSamples - 1);
+                positions3D[pos_ix + 2] = repeat * (x / (numSamples - 1) * this.params.scale - this.params.scale / 2);
+                positions3D[pos_ix + 3] = repeat * (y / (numSamples - 1) * this.params.scale - this.params.scale / 2);
                 positions3D[pos_ix + 4] = 0.0;
 
-                let ind_ix = (y * (this.params.modes / 2 - 1) + x) * 6;
-                indices3D[ind_ix + 0] = y * this.params.modes / 2 + x;
-                indices3D[ind_ix + 1] = (y + 1) * this.params.modes / 2 + x;
-                indices3D[ind_ix + 2] = (y + 1) * this.params.modes / 2 + x + 1;
+                let ind_ix = (y * (numSamples - 1) + x) * 6;
+                indices3D[ind_ix + 0] = y * numSamples + x;
+                indices3D[ind_ix + 1] = (y + 1) * numSamples + x;
+                indices3D[ind_ix + 2] = (y + 1) * numSamples + x + 1;
                 indices3D[ind_ix + 3] = indices3D[ind_ix + 2];
-                indices3D[ind_ix + 4] = y * this.params.modes / 2 + x + 1;
+                indices3D[ind_ix + 4] = y * numSamples + x + 1;
                 indices3D[ind_ix + 5] = indices3D[ind_ix + 0];
             }
         }
@@ -217,7 +221,7 @@ const Waves = class {
                               this.gl.RGBA,
                               this.gl.FLOAT,
                               this.gl.NEAREST,
-                              this.gl.CLAMP_TO_EDGE,
+                              this.gl.REPEAT,
                               null),
             );
         }
@@ -267,6 +271,8 @@ const Waves = class {
         });
         this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_projection"][0], false, projMat);
         this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_view"][0], false, viewMat);
+
+        this.gl.clearColor(...this.view.skyColor, 1.0);
 
         this.view.changed = false;
     }
@@ -323,7 +329,7 @@ const Waves = class {
         this.useFramebuffer("canvas", this.gl.canvas.width, this.gl.canvas.height);
         this.gl.enable(this.gl.DEPTH_TEST);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-        this.gl.drawElements(this.gl.TRIANGLES, 6 * (this.params.modes / 2 - 1) * (this.params.modes / 2 - 1), this.gl.UNSIGNED_SHORT, 0);
+        this.gl.drawElements(this.gl.TRIANGLES, this.numIndices, this.gl.UNSIGNED_SHORT, 0);
 
         this.t += 0.1;
         if (!this.paused) {

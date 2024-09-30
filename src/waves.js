@@ -3,7 +3,18 @@
  * - Understand the camera
  * - Skybox
  * - Repeat in x and y direction
- * - Better controls
+ * - Better controls, possibly align with some CSS like
+ *     #simulationControls, #viewControls {
+ *       display: grid;
+ *       grid-template-columns: 1fr;
+ *       grid-template-columns: max-content;
+ *     }
+ *     #simulationControls > div, #viewControls > div {
+ *       display: flex;
+ *     }
+ *     #simulationControls > div > *, #viewControls > div > * {
+ *       flex: 1;
+ *     }
  * - Fix sccaling of z-coordinates
  * - Better default parameters for light and colors
  * - Add ocean depth as a parameter

@@ -34,6 +34,8 @@ import {
 
 import * as mat from "./matrices.js";
 
+console.log(mat);
+
 const SHADER_SOURCES = {
     vertexShader2D: "./src/vertex-shader-2d.glsl",
     vertexShader3D: "./src/vertex-shader-3d.glsl",
@@ -265,7 +267,13 @@ const Waves = class {
         viewMat = mat.scale(viewMat, 1, 1, 1 / 3);
         viewMat = mat.rotateZ(viewMat, Math.PI / 180 * this.view.angZ);
         viewMat = mat.rotateX(viewMat, Math.PI / 180 * this.view.angX);
-        viewMat = mat.translate(viewMat, 0.0, 0.0, -0.5);
+        viewMat = mat.translate(viewMat, 0.0, 0.6, -0.5);
+
+        const cameraPos = [
+            0.6 * Math.sin(Math.PI / 180 * this.view.angZ),
+            -0.6 * Math.cos(Math.PI / 180 * this.view.angZ),
+            0.5,
+        ];
 
         this.gl.useProgram(this.programs.output3D.prog);
         this.programs.output3D.setUniforms(this.gl, {
@@ -275,7 +283,7 @@ const Waves = class {
             "u_n2": 1.34,
             "u_diffuse": this.view.diffuse,
             "u_lightdir": [1.0, 0.0, 1.0],
-            "u_camerapos": [0.0, 0.0, 0.0],
+            "u_camerapos": cameraPos,
             "u_skycolor": this.view.skyColor,
             "u_watercolor": this.view.waterColor,
             "u_aircolor": this.view.airColor,
@@ -347,6 +355,13 @@ const Waves = class {
             window.setTimeout(() => window.requestAnimationFrame(() => this.render()), this.view.interval);
         }
     }
+
+    togglePaused () {
+        this.paused = !this.paused;
+        if (!this.paused) {
+            window.requestAnimationFrame(() => this.render());
+        }
+    }
 }
 
 window.onload = async function(ev) {
@@ -355,20 +370,22 @@ window.onload = async function(ev) {
     const waves = new Waves(shaderSources);
 
     window.addEventListener("keyup", function (ev) {
-        if (ev.key === " ") {
-            waves.paused = !waves.paused;
-            if (!waves.paused) {
-                window.requestAnimationFrame(() => waves.render());
-            }
-        } else if (ev.key === "0" || ev.key === "1" || ev.key === "2" || ev.key === "3") {
-            waves.channel = parseInt(ev.key);
+        switch (ev.key) {
+        case " ":
+            waves.togglePaused();
+            break;
+        case "ArrowRight":
+        case "ArrowLeft":
+        case "ArrowUp":
+        case "ArrowDown":
+            console.log("todo...");
+            break;
+        default:
+            break;
         }
     });
 
     document.querySelector("canvas").addEventListener("click", function (canvas, event) {
-        waves.paused = !waves.paused;
-        if (!waves.paused) {
-            window.requestAnimationFrame(() => waves.render());
-        }
+        waves.togglePaused();
     });
 }

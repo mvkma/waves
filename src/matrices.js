@@ -1,4 +1,39 @@
 /**
+ * @param {object} a
+ * @param {object} b
+ *
+ * @returns {Float32Array}
+ */
+const cross = function (a, b) {
+    return new Float32Array([
+        a[1] * b[2] - b[1] * a[2],
+        a[2] * b[0] - b[2] * a[0],
+        a[0] * b[1] - b[0] * a[1],
+    ]);
+}
+
+/**
+ * @param {object} a
+ * @param {object} b
+ *
+ * @returns {number}
+ */
+const dot = function (a, b) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+/*
+ * @param {object} a
+ *
+ * @returns {object}
+ */
+const normalize = function (a) {
+    const length = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+
+    return a.map(x => x / length);
+}
+
+/**
  * @param {number} n
  *
  * @returns {Float32Array}
@@ -139,6 +174,26 @@ const perspectiveProjection = function (l, r, b, t, n, f) {
         0.0, 2.0 * n / (t - b), 0.0, 0.0,
         (r + l) / (r - l), (t + b) / (t - b), -(f + n) / (f - n), -1.0,
         0.0, 0.0, -2.0 * f * n / (f - n), 0.0
+    ]);
+}
+
+/**
+ * @param {object} camera
+ * @param {object} target
+ * @param {object} up
+ *
+ * @returns {Float32Array}
+ */
+const lookAt = function (camera, target, up) {
+    const n = normalize([camera[0] - target[0], camera[1] - target[1], camera[2] - target[2]]);
+    const u = normalize(cross(up, n));
+    const v = normalize(cross(n, u));
+
+    return new Float32Array([
+        u[0], u[1], u[2], -dot(u, target),
+        v[0], v[1], v[2], -dot(v, target),
+        n[0], n[1], n[2], -dot(n, target),
+        0,    0,    0,    1,
     ]);
 }
 

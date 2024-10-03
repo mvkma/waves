@@ -34,8 +34,6 @@ import {
 
 import * as mat from "./matrices.js";
 
-console.log(mat);
-
 const SHADER_SOURCES = {
     vertexShader2D: "./src/vertex-shader-2d.glsl",
     vertexShader3D: "./src/vertex-shader-3d.glsl",
@@ -156,9 +154,6 @@ const Waves = class {
         this.numIndices = 0;
         this.paused = true;
 
-        console.log(this.view);
-        console.log(this.params);
-
         this.initSimulation();
         this.initView();
     }
@@ -268,7 +263,13 @@ const Waves = class {
             -1.0 * Math.cos(this.view.angZ * Math.PI / 180),
             1.5,
         ];
-        const viewMat = mat.scale(mat.lookAt(cameraPos, [0, 0, 0], [0, 0, 1]), 1, 1, 1/3);
+        const viewMat = mat.rotateY(
+            mat.rotateX(
+                mat.scale(mat.lookAt(cameraPos, [0, 0, 0], [0, 0, 1]), 1, 1, 1/3),
+                this.view.angX * Math.PI / 180
+            ),
+            this.view.angY * Math.PI / 180,
+        );
 
         this.gl.useProgram(this.programs.output3D.prog);
         this.programs.output3D.setUniforms(this.gl, {
@@ -365,20 +366,32 @@ window.onload = async function(ev) {
     const waves = new Waves(shaderSources);
 
     window.addEventListener("keydown", function (ev) {
+        let angle;
+
         switch (ev.key) {
         case " ":
             waves.togglePaused();
             ev.preventDefault();
             break;
         case "ArrowRight":
-            waves.view.update("angZ", waves.view.angZ + 1);
+            angle = ev.shiftKey ? "angY" : "angZ";
+            waves.view.update(angle, waves.view[angle] + 1);
+            ev.preventDefault();
             break;
         case "ArrowLeft":
-            waves.view.update("angZ", waves.view.angZ - 1);
+            angle = ev.shiftKey ? "angY" : "angZ";
+            waves.view.update(angle, waves.view[angle] - 1);
+            ev.preventDefault();
             break;
         case "ArrowUp":
+            angle = "angX";
+            waves.view.update(angle, waves.view[angle] + 1);
+            ev.preventDefault();
+            break;
         case "ArrowDown":
-            console.log("todo...");
+            angle = "angX";
+            waves.view.update(angle, waves.view[angle] - 1);
+            ev.preventDefault();
             break;
         default:
             break;

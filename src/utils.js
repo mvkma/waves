@@ -210,9 +210,17 @@ const viewParameters = new ParameterGroup({
     },
     "angX": {
         type: "range",
-        value: 10.0,
+        value: 0.0,
         attributes: { min: -180, max: 180, step: 1 },
         name: "Angle X",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n,
+    },
+    "angY": {
+        type: "range",
+        value: 0.0,
+        attributes: { min: -180, max: 180, step: 1 },
+        name: "Angle Y",
         transformation: (n) => parseFloat(n),
         inverseTransformation: (n) => n,
     },

@@ -19,10 +19,9 @@
  * - Better default parameters for light and colors
  * - Add ocean depth as a parameter
  */
+
 import {
     Program,
-    simulationParameters,
-    viewParameters,
     createTexture,
     createFramebuffer,
     loadShaderSources,
@@ -34,20 +33,13 @@ import {
 
 import * as mat from "./matrices.js";
 
-const SHADER_SOURCES = {
-    vertexShader2D: "./src/vertex-shader-2d.glsl",
-    vertexShader3D: "./src/vertex-shader-3d.glsl",
-    fragmentShaderFFT: "./src/fragment-shader-fft.glsl",
-    fragmentShaderOcean: "./src/fragment-shader-ocean.glsl",
-    fragmentShaderNormals: "./src/fragment-shader-normals.glsl",
-    fragmentShaderConjugation: "./src/fragment-shader-conjugation.glsl",
-    fragmentShaderTime: "./src/fragment-shader-time.glsl",
-    fragmentShaderWaveInit: "./src/fragment-shader-wave-init.glsl",
-};
-
-const FLOAT_SIZE = Float32Array.BYTES_PER_ELEMENT;
-
-const G = 9.81;
+import {
+    G,
+    FLOAT_SIZE,
+    SHADER_SOURCES,
+    VIEW_PARAMS,
+    SIMULATION_PARAMS,
+} from "./params.js";
 
 const TEXTURE_UNITS = {
     outputA: 3,
@@ -123,10 +115,10 @@ const Waves = class {
             return;
         }
 
-        this.params = simulationParameters;
+        this.params = SIMULATION_PARAMS;
         buildControls("simulationControls", this.params);
 
-        this.view = viewParameters;
+        this.view = VIEW_PARAMS;
         buildControls("viewControls", this.view);
 
         const bindings2d = { "a_position": ATTRIBUTE_LOCATIONS["position"] };

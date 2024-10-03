@@ -148,11 +148,13 @@ function vecToColor(vec) {
 
 const ParameterGroup = class {
     constructor(params) {
+        this.callbacks = {};
         this.defaults = {};
         this.specs = {};
 
         for (const [name, spec] of Object.entries(params)) {
             this[name] = spec.value;
+            this.callbacks[name] = [];
             this.defaults[name] = spec.value;
             this.specs[name] = spec;
         }
@@ -162,12 +164,16 @@ const ParameterGroup = class {
 
     update(key, value) {
         this[key] = value;
+        for (const fn of this.callbacks[key]) {
+            fn(value);
+        }
         this.changed = true;
     }
 
     reset() {
         for (const [k, v] of Object.entries(this.defaults)) {
             this[k] = v;
+            this.callbacks[k] = [];
         }
     }
 }

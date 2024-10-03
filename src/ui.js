@@ -22,7 +22,11 @@ function buildControls(parentId, parameterGroup) {
             Object.keys(param.attributes).forEach(k => input.setAttribute(k, param.attributes[k]));
         }
         input.value = param.inverseTransformation(param.value);
-        input.addEventListener("input", (ev) => parameterGroup.update(k, param.transformation(ev.target.value)));
+        input.addEventListener(
+            "input",
+            (ev) => parameterGroup.update(k, param.transformation(ev.target.value))
+        );
+        parameterGroup.callbacks[k].push((value) => input.value = param.inverseTransformation(value));
 
         const container = document.createElement("div");
         container.setAttribute("class", "param-row");

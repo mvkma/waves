@@ -364,13 +364,18 @@ window.onload = async function(ev) {
 
     const waves = new Waves(shaderSources);
 
-    window.addEventListener("keyup", function (ev) {
+    window.addEventListener("keydown", function (ev) {
         switch (ev.key) {
         case " ":
             waves.togglePaused();
+            ev.preventDefault();
             break;
         case "ArrowRight":
+            waves.view.update("angZ", waves.view.angZ + 1);
+            break;
         case "ArrowLeft":
+            waves.view.update("angZ", waves.view.angZ - 1);
+            break;
         case "ArrowUp":
         case "ArrowDown":
             console.log("todo...");

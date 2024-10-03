@@ -247,6 +247,11 @@ const Waves = class {
             "u_cutoff": this.params.cutoff,
             "u_amp": 1 / this.params.modes / 50, // TODO
         });
+        this.useFramebuffer("outputA", this.params.modes, this.params.modes);
+        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+        this.gl.useProgram(this.programs.conjugation.prog);
+        this.programs.conjugation.setUniforms(this.gl, {"u_input": TEXTURE_UNITS.outputA});
         this.useFramebuffer("amplitudes", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
@@ -304,14 +309,8 @@ const Waves = class {
         this.gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
         this.gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.position, 2, this.gl.FLOAT, false, 0, 0);
 
-        // TODO: Probably no need to run this every time
-        this.gl.useProgram(this.programs.conjugation.prog);
-        this.programs.conjugation.setUniforms(this.gl, {"u_input": TEXTURE_UNITS.amplitudes});
-        this.useFramebuffer("outputA", this.params.modes, this.params.modes);
-        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-
         this.gl.useProgram(this.programs.timeEvolution.prog);
-        this.programs.timeEvolution.setUniforms(this.gl, {"u_input": TEXTURE_UNITS.outputA, "u_t": this.t});
+        this.programs.timeEvolution.setUniforms(this.gl, {"u_input": TEXTURE_UNITS.amplitudes, "u_t": this.t});
         this.useFramebuffer("outputB", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 

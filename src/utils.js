@@ -226,7 +226,7 @@ const viewParameters = new ParameterGroup({
     },
     "angZ": {
         type: "range",
-        value: 0.0,
+        value: -65.0,
         attributes: { min: -180, max: 180, step: 1 },
         name: "Angle Z",
         transformation: (n) => parseFloat(n),

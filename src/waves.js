@@ -263,17 +263,12 @@ const Waves = class {
         const x = 0.8;
         const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
 
-        let viewMat = mat.identity(4);
-        viewMat = mat.scale(viewMat, 1, 1, 1 / 3);
-        viewMat = mat.rotateZ(viewMat, Math.PI / 180 * this.view.angZ);
-        viewMat = mat.rotateX(viewMat, Math.PI / 180 * this.view.angX);
-        viewMat = mat.translate(viewMat, 0.0, 0.6, -0.5);
-
         const cameraPos = [
-            0.6 * Math.sin(Math.PI / 180 * this.view.angZ),
-            -0.6 * Math.cos(Math.PI / 180 * this.view.angZ),
-            0.5,
+            1.0 * Math.sin(this.view.angZ * Math.PI / 180),
+            -1.0 * Math.cos(this.view.angZ * Math.PI / 180),
+            1.5,
         ];
+        const viewMat = mat.scale(mat.lookAt(cameraPos, [0, 0, 0], [0, 0, 1]), 1, 1, 1/3);
 
         this.gl.useProgram(this.programs.output3D.prog);
         this.programs.output3D.setUniforms(this.gl, {

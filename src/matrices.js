@@ -190,10 +190,10 @@ const lookAt = function (camera, target, up) {
     const v = normalize(cross(n, u));
 
     return new Float32Array([
-        u[0], u[1], u[2], -dot(u, target),
-        v[0], v[1], v[2], -dot(v, target),
-        n[0], n[1], n[2], -dot(n, target),
-        0,    0,    0,    1,
+        u[0], v[0], n[0], 0,
+        u[1], v[1], n[1], 0,
+        u[2], v[2], n[2], 0,
+        -dot(u, camera), -dot(v, camera), -dot(n, camera), 1,
     ]);
 }
 
@@ -265,4 +265,8 @@ export {
     rotationZ,
     translation,
     scaling,
+    cross,
+    normalize,
+    dot,
+    lookAt,
 };

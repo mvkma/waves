@@ -30,7 +30,7 @@ void main() {
   dis = get_displacement(a_mappos);
 
   v_mappos = a_mappos;
-  v_vertexpos = vec3((a_vertexpos.xy + dis.xy) / u_scales * 2.0, dis.z);
+  v_vertexpos = vec3((a_vertexpos.xy + dis.xy) / u_scales * 2.0, 1.0 * dis.z);
 
   gl_Position = u_projection * u_view * vec4(v_vertexpos, 1.0);
 }

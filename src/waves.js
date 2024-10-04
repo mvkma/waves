@@ -144,6 +144,7 @@ const Waves = class {
         this.t = 0.0;
         this.channel = 0;
         this.numIndices = 0;
+        this.indexType = 0;
         this.paused = true;
 
         this.initSimulation();
@@ -164,7 +165,15 @@ const Waves = class {
         const numSamples = this.params.modes / 2;
         const repeat = 3;
         let positions3D = new Float32Array({length: 5 * numSamples * numSamples});
-        let indices3D = new Uint16Array({length: 6 * (numSamples - 1) * (numSamples - 1)});
+
+        let indices3D;
+        if (numSamples * numSamples < 2**16) {
+            indices3D = new Uint16Array({length: 6 * (numSamples - 1) * (numSamples - 1)});
+            this.indexType = this.gl.UNSIGNED_SHORT;
+        } else {
+            indices3D = new Uint32Array({length: 6 * (numSamples - 1) * (numSamples - 1)});
+            this.indexType = this.gl.UNSIGNED_INT;
+        }
         this.numIndices = indices3D.length;
 
         for (let y = 0; y < numSamples; y++) {
@@ -177,6 +186,9 @@ const Waves = class {
                 positions3D[pos_ix + 4] = 0.0;
 
                 let ind_ix = (y * (numSamples - 1) + x) * 6;
+                if (ind_ix + 5 > this.numIndices) {
+                    continue;
+                }
                 indices3D[ind_ix + 0] = y * numSamples + x;
                 indices3D[ind_ix + 1] = (y + 1) * numSamples + x;
                 indices3D[ind_ix + 2] = (y + 1) * numSamples + x + 1;
@@ -211,6 +223,7 @@ const Waves = class {
         });
 
         for (const name of Object.keys(TEXTURE_UNITS)) {
+            // TODO if possible destroy existing framebuffers and textures
             FRAMEBUFFERS[name] = createFramebuffer(
                 this.gl,
                 createTexture(this.gl,
@@ -335,7 +348,7 @@ const Waves = class {
         this.useFramebuffer("canvas", this.gl.canvas.width, this.gl.canvas.height);
         this.gl.enable(this.gl.DEPTH_TEST);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-        this.gl.drawElements(this.gl.TRIANGLES, this.numIndices, this.gl.UNSIGNED_SHORT, 0);
+        this.gl.drawElements(this.gl.TRIANGLES, this.numIndices, this.indexType, 0);
 
         this.t += 0.1;
         if (!this.paused) {

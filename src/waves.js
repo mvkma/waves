@@ -64,6 +64,16 @@ const ATTRIBUTE_LOCATIONS = {
     vertexpos: 2,
 };
 
+const CUBE_FACES = [
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_X, url: "sky-horizontal.jpg" },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Y, url: "sky-horizontal.jpg" },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Z, url: "sky-horizontal.jpg" },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_X, url: "sky-horizontal.jpg" },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Y, url: "sky-horizontal.jpg" },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Z, url: "sky-horizontal.jpg" },
+];
+
+
 /**
  * @param {!WebGLRenderingContext} gl
  * @param {!Program} prog
@@ -106,6 +116,25 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
     fftStep(gl, prog, input, outputBuffer, 2**k, 2**(k - 1), 1);
 }
 
+function initializeCubeMap(gl) {
+    const cubeTexture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + 2);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture);
+
+    CUBE_FACES.forEach(({target, url}) => {
+        gl.texImage2D(target, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        const img = new Image();
+        img.src = url;
+        img.addEventListener("load", () => {
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture);
+            gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+        });
+    });
+    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+}
+
 const Waves = class {
     constructor (shaders) {
         this.gl = document.querySelector("canvas").getContext("webgl2");
@@ -146,6 +175,8 @@ const Waves = class {
         this.numIndices = 0;
         this.indexType = 0;
         this.paused = true;
+
+        initializeCubeMap(this.gl);
 
         this.initSimulation();
         this.initView();
@@ -283,7 +314,6 @@ const Waves = class {
 
         this.gl.useProgram(this.programs.output3D.prog);
         this.programs.output3D.setUniforms(this.gl, {
-            "u_modes": [this.params.modes, this.params.modes],
             "u_scales": [this.params.scale, this.params.scale],
             "u_n1": 1.0,
             "u_n2": 1.34,
@@ -293,6 +323,7 @@ const Waves = class {
             "u_skycolor": this.view.skyColor,
             "u_watercolor": this.view.waterColor,
             "u_aircolor": this.view.airColor,
+            // "u_cubemap": 2,
         });
         this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_projection"][0], false, projMat);
         this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_view"][0], false, viewMat);

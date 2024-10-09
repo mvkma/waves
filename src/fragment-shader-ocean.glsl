@@ -3,6 +3,7 @@
 precision highp float;
 
 uniform highp sampler2D u_normals;
+// uniform highp samplerCube u_cubemap;
 
 uniform float u_n1;
 uniform float u_n2;
@@ -22,6 +23,7 @@ float refl;
 float dist;
 vec3 color;
 vec3 normal;
+vec3 skycolor;
 
 void main() {
   normal = texture2D(u_normals, v_mappos).xyz;
@@ -32,6 +34,8 @@ void main() {
   refl = refl0 + (1.0 - refl0) * pow(1.0 - costh, 5.0);
 
   dist = exp(-u_diffuse * length(v_vertexpos - u_camerapos));
+
+  // skycolor = textureCube(u_cubemap, reflect(normalize(v_vertexpos - u_camerapos), -normal)).rgb;
 
   color = mix(u_aircolor, mix(u_watercolor, u_skycolor, refl), dist);
 

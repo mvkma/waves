@@ -1,9 +1,10 @@
 const WEBGL_UNIFORM_SETTERS = {
-    [WebGL2RenderingContext.INT]        : "uniform1i",
-    [WebGL2RenderingContext.FLOAT]      : "uniform1f",
-    [WebGL2RenderingContext.FLOAT_VEC2] : "uniform2fv",
-    [WebGL2RenderingContext.FLOAT_VEC3] : "uniform3fv",
-    [WebGL2RenderingContext.SAMPLER_2D] : "uniform1i",
+    [WebGL2RenderingContext.INT]          : "uniform1i",
+    [WebGL2RenderingContext.FLOAT]        : "uniform1f",
+    [WebGL2RenderingContext.FLOAT_VEC2]   : "uniform2fv",
+    [WebGL2RenderingContext.FLOAT_VEC3]   : "uniform3fv",
+    [WebGL2RenderingContext.SAMPLER_2D]   : "uniform1i",
+    [WebGL2RenderingContext.SAMPLER_CUBE] : "uniform1i",
 };
 
 /**

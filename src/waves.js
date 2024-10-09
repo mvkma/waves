@@ -1,7 +1,7 @@
 /*
  * TODO
  * - Understand the camera
- * - Skybox
+ * - Skybox and sky reflection?
  * - Repeat in x and y direction
  * - Better controls, possibly align with some CSS like
  *     #simulationControls, #viewControls {

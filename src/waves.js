@@ -96,26 +96,22 @@ function fftStep(gl, prog, inputTextureUnit, outputBuffer, size, subSize, horizo
 /**
  * @param {WebGLRenderingContext} gl
  * @param {Program} prog
- * @param {number} inputTextureUnit
+ * @param {string} input
+ * @param {string} output
  * @param {object} params
  */
-function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
+function fft(gl, prog, bufferA, bufferB, params) {
     gl.useProgram(prog.prog)
     prog.setUniforms(gl, {"u_size": params.modes});
 
-    let inputs = [TEXTURE_UNITS.tempB, TEXTURE_UNITS.tempA];
-    let outputs = [FRAMEBUFFERS.tempA, FRAMEBUFFERS.tempB];
+    let inputs = [TEXTURE_UNITS[bufferA], TEXTURE_UNITS[bufferB]];
+    let outputs = [FRAMEBUFFERS[bufferB], FRAMEBUFFERS[bufferA]];
 
     let k = Math.log2(params.modes);
-
-    fftStep(gl, prog, inputTextureUnit, FRAMEBUFFERS.tempA, 2**k, 2, 0);
-    for (let i = 1; i < 2 * k - 1; i++) {
+    for (let i = 0; i < 2 * k; i++) {
         let subSize = 2 * Math.pow(2, i % k);
         fftStep(gl, prog, inputs[i % 2], outputs[i % 2], 2**k, subSize, i >= k ? 1 : 0);
     }
-
-    let input = ((2 * k) % 2 === 0) ? inputs[1] : inputs[0];
-    fftStep(gl, prog, input, outputBuffer, 2**k, 2**k, 1);
 }
 
 const Waves = class {
@@ -333,7 +329,7 @@ const Waves = class {
         this.useFramebuffer("outputB", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
-        fft(this.gl, this.programs.fft, TEXTURE_UNITS.outputB, FRAMEBUFFERS["outputB"], this.params);
+        fft(this.gl, this.programs.fft, "outputB", "outputA", this.params);
 
         // Normals
         this.gl.useProgram(this.programs.normals.prog);

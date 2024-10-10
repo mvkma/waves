@@ -57,10 +57,10 @@ void main() {
                          0.1 * max(dot(normal, normalize(u_lightdir)), 0.0) * u_suncolor);
 
   // Ambient parts
-  color += 0.5 * u_watercolor;
+  color += 0.5 * 0.5 * u_watercolor;
 
   // Specular part (TODO)
-  color += u_suncolor * u_suncolor * pow(max(dot(normal, normalize(normalize(u_lightdir) - normalize(view))), 0.0), 1024.0);
+  color += u_suncolor * u_suncolor * pow(max(dot(normal, normalize(normalize(u_lightdir) - normalize(view))), 0.0), 512.0);
 
   // Fresnel
   color = mix(color, 0.5 * u_skycolor, refl);

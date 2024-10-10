@@ -17,6 +17,7 @@ const SHADER_SOURCES = {
     fragmentShaderConjugation: "./src/fragment-shader-conjugation.glsl",
     fragmentShaderTime: "./src/fragment-shader-time.glsl",
     fragmentShaderWaveInit: "./src/fragment-shader-wave-init.glsl",
+    fragmentShaderDebug: "./src/fragment-shader-debug.glsl",
 };
 
 const VIEW_PARAMS = new ParameterGroup({

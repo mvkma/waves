@@ -142,6 +142,7 @@ const Waves = class {
             normals: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderNormals"], bindings2d),
             fft: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderFFT"], bindings2d),
             output3D: new Program(this.gl, shaders["vertexShader3D"], shaders["fragmentShaderOcean"], bindings3d),
+            debug: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderDebug"], bindings2d),
         };
 
         this.buffers = { positions2D: this.gl.createBuffer(), positions3D: this.gl.createBuffer(), indices3D: this.gl.createBuffer() };
@@ -274,19 +275,20 @@ const Waves = class {
     }
 
     initView () {
-        const aspectRatio = 1.0 / (this.gl.canvas.width / this.gl.canvas.height);
+        const aspectRatio = (this.gl.canvas.width / this.gl.canvas.height);
         const x = 0.8;
-        const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.5, 5);
+        const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
 
         const cameraPos = [
-            0.0 * Math.sin(this.view.angZ * Math.PI / 180),
-            -0.0 * Math.cos(this.view.angZ * Math.PI / 180),
-            5.5,
+            1.0 * Math.sin(this.view.angZ * Math.PI / 180),
+            -1.0 * Math.cos(this.view.angZ * Math.PI / 180),
+            1.5,
         ];
         const lookAt = mat.lookAt(
             cameraPos,
             [-cameraPos[0], -cameraPos[1], -cameraPos[2]],
-            [Math.sin(this.view.angZ * Math.PI / 180), Math.cos(this.view.angZ * Math.PI / 180), 1]
+            // [Math.sin(this.view.angZ * Math.PI / 180), Math.cos(this.view.angZ * Math.PI / 180), 1]
+            [0, 0, 1],
         );
         const viewMat = mat.rotateY(
             mat.rotateX(
@@ -295,8 +297,6 @@ const Waves = class {
             ),
             this.view.angY * Math.PI / 180,
         );
-        console.log(lookAt);
-        console.log(viewMat);
 
         this.gl.useProgram(this.programs.output3D.prog);
         this.programs.output3D.setUniforms(this.gl, {
@@ -304,7 +304,7 @@ const Waves = class {
             "u_n1": 1.0,
             "u_n2": 1.34,
             "u_diffuse": this.view.diffuse,
-            "u_lightdir": [0.0, 0.0, 20.0],
+            "u_lightdir": [1.0, 0.0, 2.0],
             "u_camerapos": cameraPos,
             "u_skycolor": this.view.skyColor,
             "u_suncolor": this.view.sunColor,

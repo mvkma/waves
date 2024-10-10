@@ -33,10 +33,10 @@ void main() {
 
   mid = get_displacement(texcoord);
 
-  vr = get_displacement(texcoord + dx) - mid + vec3(dx * 1.0 * u_scales.x / u_scales.x, 0.0);
-  vl = get_displacement(texcoord - dx) - mid - vec3(dx * 1.0 * u_scales.x / u_scales.x, 0.0);
-  vb = get_displacement(texcoord + dx) - mid + vec3(dy * 1.0 * u_scales.y / u_scales.y, 0.0);
-  vt = get_displacement(texcoord - dx) - mid - vec3(dy * 1.0 * u_scales.y / u_scales.y, 0.0);
+  vr = get_displacement(texcoord + dx) - mid + vec3(dx, 0.0);
+  vl = get_displacement(texcoord - dx) - mid - vec3(dx, 0.0);
+  vb = get_displacement(texcoord + dy) - mid + vec3(dy, 0.0);
+  vt = get_displacement(texcoord - dy) - mid - vec3(dy, 0.0);
 
   gl_FragColor = vec4(normalize(cross(vr, vt) + cross(vt, vl) + cross(vl, vb) + cross(vb, vr)), 1.0);
 }

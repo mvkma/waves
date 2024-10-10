@@ -18,11 +18,11 @@ async function loadShaderSources(shaderSources) {
 }
 
 /**
- * @param {!WebGLRenderingContext} gl
+ * @param {WebGLRenderingContext} gl
  * @param {string} source
  * @param {number} type
  *
- * @return {!WebGLShader}
+ * @return {WebGLShader}
  */
 function compileShader(gl, source, type) {
     var shader = gl.createShader(type);
@@ -37,16 +37,16 @@ function compileShader(gl, source, type) {
 }
 
 /**
- * @param {!WebGLRenderingContext} gl
- * @param {!number} textureUnit
- * @param {!number} width
- * @param {!number} height
- * @param {!number} internalFormat
- * @param {!number} format
- * @param {!number} type
+ * @param {WebGLRenderingContext} gl
+ * @param {number} textureUnit
+ * @param {number} width
+ * @param {number} height
+ * @param {number} internalFormat
+ * @param {number} format
+ * @param {number} type
  * @param {ArrayBufferView | null} pixels
  *
- * @return {!WebGLTexture}
+ * @return {WebGLTexture}
  */
 function createTexture(gl, textureUnit, width, height, internalFormat, format, type, filterParam, clampParam, pixels) {
     var texture = gl.createTexture();
@@ -65,10 +65,10 @@ function createTexture(gl, textureUnit, width, height, internalFormat, format, t
 }
 
 /**
- * @param {!WebGLRenderingContext} gl
- * @param {!WebGLTexture} texture
+ * @param {WebGLRenderingContext} gl
+ * @param {WebGLTexture} texture
  *
- * @return {!WebGLFramebuffer}
+ * @return {WebGLFramebuffer}
  */
 function createFramebuffer(gl, texture) {
     var fb = gl.createFramebuffer();
@@ -78,12 +78,38 @@ function createFramebuffer(gl, texture) {
     return fb;
 }
 
+/**
+ * @param {WebGLRenderingContext} gl
+ * @param {number} textureUnit
+ * @param {object} faces
+ */
+function initializeCubeMap(gl, textureUnit, faces) {
+    const cubeTexture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + textureUnit);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture);
+
+    faces.forEach(({target, url, size}) => {
+        gl.texImage2D(target, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+        const img = new Image();
+        img.src = url;
+        img.addEventListener("load", () => {
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture);
+            gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+        });
+    });
+
+    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+}
+
 const Program = class {
     /**
-     * @param {!WebGLRenderingContext} gl
-     * @param {!string} vertexShaderSrc
-     * @param {!string} fragmentShaderSrc
-     * @param {!object} attribBindings
+     * @param {WebGLRenderingContext} gl
+     * @param {string} vertexShaderSrc
+     * @param {string} fragmentShaderSrc
+     * @param {object} attribBindings
      *
      * @return {Program}
      */
@@ -186,5 +212,6 @@ export {
     colorToVec,
     createTexture,
     createFramebuffer,
-    loadShaderSources
+    loadShaderSources,
+    initializeCubeMap,
 };

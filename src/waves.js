@@ -25,6 +25,7 @@ import {
     createTexture,
     createFramebuffer,
     loadShaderSources,
+    initializeCubeMap,
 } from "./utils.js";
 
 import {
@@ -64,21 +65,22 @@ const ATTRIBUTE_LOCATIONS = {
     vertexpos: 2,
 };
 
+const CUBE_TEXTURE_UNIT = 2;
+
 const CUBE_FACES = [
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_X, url: "sky-horizontal.jpg" },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Y, url: "sky-horizontal.jpg" },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Z, url: "sky-horizontal.jpg" },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_X, url: "sky-horizontal.jpg" },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Y, url: "sky-horizontal.jpg" },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Z, url: "sky-horizontal.jpg" },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_X, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Y, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Z, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_X, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Y, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Z, url: "sky-horizontal.jpg", size: 512 },
 ];
 
-
 /**
- * @param {!WebGLRenderingContext} gl
- * @param {!Program} prog
+ * @param {WebGLRenderingContext} gl
+ * @param {Program} prog
  * @param {number} inputTextureUnit
- * @param {!WebGLFramebuffer} outputBuffer
+ * @param {WebGLFramebuffer} outputBuffer
  * @param {number} size
  * @param {number} subSize
  * @param {number} horizontal
@@ -87,13 +89,13 @@ function fftStep(gl, prog, inputTextureUnit, outputBuffer, size, subSize, horizo
     gl.bindFramebuffer(gl.FRAMEBUFFER, outputBuffer);
     // TODO: this might be wrong
     gl.viewport(0, 0, size, size);
-    prog.setUniforms(gl, {"u_input": inputTextureUnit, "u_subsize": 2 * subSize, "u_horizontal": horizontal});
+    prog.setUniforms(gl, {"u_input": inputTextureUnit, "u_subsize": subSize, "u_horizontal": horizontal});
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
 /**
- * @param {!WebGLRenderingContext} gl
- * @param {!Program} prog
+ * @param {WebGLRenderingContext} gl
+ * @param {Program} prog
  * @param {number} inputTextureUnit
  * @param {object} params
  */
@@ -106,33 +108,14 @@ function fft(gl, prog, inputTextureUnit, outputBuffer, params) {
 
     let k = Math.log2(params.modes);
 
-    fftStep(gl, prog, inputTextureUnit, FRAMEBUFFERS.tempA, 2**k, 1, 0);
+    fftStep(gl, prog, inputTextureUnit, FRAMEBUFFERS.tempA, 2**k, 2, 0);
     for (let i = 1; i < 2 * k - 1; i++) {
-        let subSize = Math.pow(2, i % k);
+        let subSize = 2 * Math.pow(2, i % k);
         fftStep(gl, prog, inputs[i % 2], outputs[i % 2], 2**k, subSize, i >= k ? 1 : 0);
     }
 
     let input = ((2 * k) % 2 === 0) ? inputs[1] : inputs[0];
-    fftStep(gl, prog, input, outputBuffer, 2**k, 2**(k - 1), 1);
-}
-
-function initializeCubeMap(gl) {
-    const cubeTexture = gl.createTexture();
-    gl.activeTexture(gl.TEXTURE0 + 2);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture);
-
-    CUBE_FACES.forEach(({target, url}) => {
-        gl.texImage2D(target, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-        const img = new Image();
-        img.src = url;
-        img.addEventListener("load", () => {
-            gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture);
-            gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-        });
-    });
-    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    fftStep(gl, prog, input, outputBuffer, 2**k, 2**k, 1);
 }
 
 const Waves = class {
@@ -176,7 +159,7 @@ const Waves = class {
         this.indexType = 0;
         this.paused = true;
 
-        initializeCubeMap(this.gl);
+        initializeCubeMap(this.gl, CUBE_TEXTURE_UNIT, CUBE_FACES);
 
         this.initSimulation();
         this.initView();

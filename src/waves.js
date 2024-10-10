@@ -274,22 +274,29 @@ const Waves = class {
     }
 
     initView () {
-        const aspectRatio = this.gl.canvas.width / this.gl.canvas.height;
+        const aspectRatio = 1.0 / (this.gl.canvas.width / this.gl.canvas.height);
         const x = 0.8;
-        const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
+        const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.5, 5);
 
         const cameraPos = [
-            1.0 * Math.sin(this.view.angZ * Math.PI / 180),
-            -1.0 * Math.cos(this.view.angZ * Math.PI / 180),
-            1.5,
+            0.0 * Math.sin(this.view.angZ * Math.PI / 180),
+            -0.0 * Math.cos(this.view.angZ * Math.PI / 180),
+            5.5,
         ];
+        const lookAt = mat.lookAt(
+            cameraPos,
+            [-cameraPos[0], -cameraPos[1], -cameraPos[2]],
+            [Math.sin(this.view.angZ * Math.PI / 180), Math.cos(this.view.angZ * Math.PI / 180), 1]
+        );
         const viewMat = mat.rotateY(
             mat.rotateX(
-                mat.scale(mat.lookAt(cameraPos, [0, 0, 0], [0, 0, 1]), 1, 1, 1/3),
+                mat.scale(lookAt, 1, 1, 1/3),
                 this.view.angX * Math.PI / 180
             ),
             this.view.angY * Math.PI / 180,
         );
+        console.log(lookAt);
+        console.log(viewMat);
 
         this.gl.useProgram(this.programs.output3D.prog);
         this.programs.output3D.setUniforms(this.gl, {
@@ -297,9 +304,10 @@ const Waves = class {
             "u_n1": 1.0,
             "u_n2": 1.34,
             "u_diffuse": this.view.diffuse,
-            "u_lightdir": [1.0, 0.0, 1.0],
+            "u_lightdir": [0.0, 0.0, 20.0],
             "u_camerapos": cameraPos,
             "u_skycolor": this.view.skyColor,
+            "u_suncolor": this.view.sunColor,
             "u_watercolor": this.view.waterColor,
             "u_aircolor": this.view.airColor,
             // "u_cubemap": 2,

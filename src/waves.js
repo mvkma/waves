@@ -160,6 +160,7 @@ const Waves = class {
 
         this.initSimulation();
         this.initView();
+        window.requestAnimationFrame(() => this.render());
     }
 
     useFramebuffer(fb, width, height) {
@@ -276,17 +277,13 @@ const Waves = class {
         const x = 0.1;
         const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.1, 10);
 
-        const cameraPos = [
+        const cameraPos = [0.0, 0.0, 1.5];
+        const target = [
             1.0 * Math.sin(this.view.angZ * Math.PI / 180),
             -1.0 * Math.cos(this.view.angZ * Math.PI / 180),
-            1.5,
+            0.0,
         ];
-        const lookAt = mat.lookAt(
-            cameraPos,
-            [-cameraPos[0], -cameraPos[1], -cameraPos[2]],
-            // [Math.sin(this.view.angZ * Math.PI / 180), Math.cos(this.view.angZ * Math.PI / 180), 1]
-            [0, 0, 1],
-        );
+        const lookAt = mat.lookAt(cameraPos, target, [0, 0, 1]);
         const viewMat = mat.rotateY(
             mat.rotateX(
                 mat.scale(lookAt, 1, 1, 1/3),
@@ -416,7 +413,14 @@ window.onload = async function(ev) {
         }
     });
 
-    document.querySelector("canvas").addEventListener("click", function (canvas, event) {
-        waves.togglePaused();
+    const canvas = document.querySelector("canvas");
+
+    canvas.addEventListener("mousemove", function (ev) {
+        if (ev.buttons == 0) {
+            return;
+        }
+        waves.view.update("angZ", waves.view["angZ"] + ev.movementX);
+        waves.view.update("angX", waves.view["angX"] + ev.movementY);
     });
+
 }

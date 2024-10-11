@@ -21,14 +21,6 @@ const SHADER_SOURCES = {
 };
 
 const VIEW_PARAMS = new ParameterGroup({
-    "diffuse": {
-        type: "range",
-        value: 0.3,
-        attributes: { min: 0, max: 1, step: 0.05 },
-        name: "Diffuse",
-        transformation: (n) => parseFloat(n),
-        inverseTransformation: (n) => n,
-    },
     "skyColor": {
         type: "color",
         value: [0.60, 0.76, 0.95],

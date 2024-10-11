@@ -4,7 +4,6 @@ precision highp float;
 
 uniform highp sampler2D u_displacements;
 uniform vec2 u_modes;
-uniform vec2 u_scales;
 
 varying vec4 v_xy;
 

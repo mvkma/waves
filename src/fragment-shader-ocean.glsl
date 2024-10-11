@@ -7,7 +7,6 @@ uniform highp sampler2D u_normals;
 
 uniform float u_n1;
 uniform float u_n2;
-uniform float u_diffuse;
 uniform vec3 u_lightdir;
 uniform vec3 u_camerapos;
 uniform vec3 u_skycolor;

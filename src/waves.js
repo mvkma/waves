@@ -228,10 +228,7 @@ const Waves = class {
         });
 
         this.gl.useProgram(this.programs.normals.prog);
-        this.programs.normals.setUniforms(this.gl, {
-            "u_modes": [this.params.modes, this.params.modes],
-            "u_scales": [this.params.scale, this.params.scale],
-        });
+        this.programs.normals.setUniforms(this.gl, {"u_modes": [this.params.modes, this.params.modes]});
 
         for (const name of Object.keys(TEXTURE_UNITS)) {
             // TODO if possible destroy existing framebuffers and textures
@@ -303,7 +300,6 @@ const Waves = class {
             "u_scales": [this.params.scale, this.params.scale],
             "u_n1": 1.0,
             "u_n2": 1.34,
-            "u_diffuse": this.view.diffuse,
             "u_lightdir": [1.5, 0.0, 1.0],
             "u_camerapos": cameraPos,
             "u_skycolor": this.view.skyColor,

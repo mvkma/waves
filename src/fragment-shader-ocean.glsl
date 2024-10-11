@@ -44,7 +44,7 @@ void main() {
   view = v_vertexpos - u_camerapos;
 
   // Schlick's approximation
-  costh = dot(normalize(view), normal);
+  costh = dot(normalize(-view), normal);
   refl0 = pow((u_n1 - u_n2) / (u_n1 + u_n2), 2.0);
   refl = refl0 + (1.0 - refl0) * pow(1.0 - costh, 5.0);
 
@@ -59,13 +59,12 @@ void main() {
   // Ambient parts
   color += 0.5 * 0.5 * u_watercolor;
 
-  // Specular part (TODO)
+  // Specular part
+  // TODO: should probably be tuned down a little bit
   color += u_suncolor * u_suncolor * pow(max(dot(normal, normalize(normalize(u_lightdir) - normalize(view))), 0.0), 512.0);
 
   // Fresnel
   color = mix(color, 0.5 * u_skycolor, refl);
-
-  color *= 0.25;
 
   color = pow(color, vec3(0.4545));
 

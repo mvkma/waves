@@ -282,7 +282,7 @@ const Waves = class {
         const cameraPos = [
             1.0 * Math.sin(this.view.angZ * Math.PI / 180),
             -1.0 * Math.cos(this.view.angZ * Math.PI / 180),
-            1.5,
+            1.0,
         ];
         const lookAt = mat.lookAt(
             cameraPos,
@@ -304,7 +304,7 @@ const Waves = class {
             "u_n1": 1.0,
             "u_n2": 1.34,
             "u_diffuse": this.view.diffuse,
-            "u_lightdir": [1.0, 0.0, 2.0],
+            "u_lightdir": [1.5, 0.0, 1.0],
             "u_camerapos": cameraPos,
             "u_skycolor": this.view.skyColor,
             "u_suncolor": this.view.sunColor,

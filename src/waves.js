@@ -274,10 +274,10 @@ const Waves = class {
 
     initView () {
         const aspectRatio = (this.gl.canvas.width / this.gl.canvas.height);
-        const x = 0.1;
+        const x = this.view.top;
         const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.1, 10);
 
-        const cameraPos = [0.0, 0.0, 1.5];
+        const cameraPos = [0.0, 0.0, this.view.cameraZ];
         const target = [
             1.0 * Math.sin(this.view.angZ * Math.PI / 180),
             -1.0 * Math.cos(this.view.angZ * Math.PI / 180),
@@ -419,8 +419,20 @@ window.onload = async function(ev) {
         if (ev.buttons == 0) {
             return;
         }
-        waves.view.update("angZ", waves.view["angZ"] + ev.movementX);
-        waves.view.update("angX", waves.view["angX"] + ev.movementY);
+        if (ev.shiftKey) {
+            waves.view.update("cameraZ", waves.view["cameraZ"] + ev.movementY / 10);
+        } else {
+            waves.view.update("angZ", waves.view["angZ"] + ev.movementX);
+            waves.view.update("angX", waves.view["angX"] + ev.movementY);
+        }
+    });
+
+    canvas.addEventListener("wheel", function (ev) {
+        if (ev.deltaY < 0) {
+            waves.view.update("top", Math.max(0.01, waves.view["top"] - 0.05));
+        } else {
+            waves.view.update("top", Math.max(0.01, waves.view["top"] + 0.05));
+        }
     });
 
 }

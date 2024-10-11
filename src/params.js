@@ -73,6 +73,22 @@ const VIEW_PARAMS = new ParameterGroup({
         transformation: (n) => parseFloat(n),
         inverseTransformation: (n) => n,
     },
+    "cameraZ": {
+        type: "range",
+        value: 1.5,
+        attributes: { min: 0, max: 10, step: 0.5 },
+        name: "Camera height",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n,
+    },
+    "top": {
+        type: "range",
+        value: 0.1,
+        attributes: { min: 0, max: 1, step: 0.1 },
+        name: "Top",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n,
+    },
     "interval": {
         type: "range",
         value: 100,

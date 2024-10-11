@@ -141,8 +141,8 @@ const Waves = class {
             timeEvolution: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderTime"], bindings2d),
             normals: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderNormals"], bindings2d),
             fft: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderFFT"], bindings2d),
-            output3D: new Program(this.gl, shaders["vertexShader3D"], shaders["fragmentShaderOcean"], bindings3d),
-            debug: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderDebug"], bindings2d),
+            sky: new Program(this.gl, shaders["vertexShader2D"], shaders["fragmentShaderSky"], bindings2d),
+            ocean: new Program(this.gl, shaders["vertexShader3D"], shaders["fragmentShaderOcean"], bindings3d),
         };
 
         this.buffers = { positions2D: this.gl.createBuffer(), positions3D: this.gl.createBuffer(), indices3D: this.gl.createBuffer() };
@@ -292,8 +292,8 @@ const Waves = class {
             this.view.angY * Math.PI / 180,
         );
 
-        this.gl.useProgram(this.programs.output3D.prog);
-        this.programs.output3D.setUniforms(this.gl, {
+        this.gl.useProgram(this.programs.ocean.prog);
+        this.programs.ocean.setUniforms(this.gl, {
             "u_scales": [this.params.scale, this.params.scale],
             "u_n1": 1.0,
             "u_n2": 1.34,
@@ -305,8 +305,15 @@ const Waves = class {
             "u_aircolor": this.view.airColor,
             // "u_cubemap": 2,
         });
-        this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_projection"][0], false, projMat);
-        this.gl.uniformMatrix4fv(this.programs.output3D.uniforms["u_view"][0], false, viewMat);
+        this.gl.uniformMatrix4fv(this.programs.ocean.uniforms["u_projection"][0], false, projMat);
+        this.gl.uniformMatrix4fv(this.programs.ocean.uniforms["u_view"][0], false, viewMat);
+
+        this.gl.useProgram(this.programs.sky.prog);
+        this.programs.sky.setUniforms(this.gl, {
+            "u_skycolor": this.view.skyColor,
+        });
+        // this.gl.uniformMatrix4fv(this.programs.sky.uniforms["u_projection"][0], false, projMat);
+        // this.gl.uniformMatrix4fv(this.programs.sky.uniforms["u_view"][0], false, viewMat);
 
         this.gl.clearColor(...this.view.skyColor, 1.0);
 
@@ -338,6 +345,18 @@ const Waves = class {
         this.useFramebuffer("outputA", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
+        if (this.view.changed) {
+            this.initView();
+        }
+
+        this.useFramebuffer("canvas", this.gl.canvas.width, this.gl.canvas.height);
+        this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.clear(this.gl.DEPTH_BUFFER_BIT);
+        this.gl.depthFunc(this.gl.LEQUAL);
+
+        this.gl.useProgram(this.programs.sky.prog);
+        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
         this.gl.disableVertexAttribArray(ATTRIBUTE_LOCATIONS.position);
 
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffers["positions3D"]);
@@ -347,18 +366,11 @@ const Waves = class {
         this.gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS.mappos);
         this.gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS.mappos, 2, this.gl.FLOAT, false, 5 * FLOAT_SIZE, 0);
 
-        if (this.view.changed) {
-            this.initView();
-        }
-        this.gl.useProgram(this.programs.output3D.prog);
-        this.programs.output3D.setUniforms(this.gl, {
+        this.gl.useProgram(this.programs.ocean.prog);
+        this.programs.ocean.setUniforms(this.gl, {
             "u_displacements": TEXTURE_UNITS.outputB,
             "u_normals": TEXTURE_UNITS.outputA,
         });
-
-        this.useFramebuffer("canvas", this.gl.canvas.width, this.gl.canvas.height);
-        this.gl.enable(this.gl.DEPTH_TEST);
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
         this.gl.drawElements(this.gl.TRIANGLES, this.numIndices, this.indexType, 0);
 
         this.t += 0.1;

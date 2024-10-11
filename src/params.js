@@ -12,6 +12,7 @@ const SHADER_SOURCES = {
     vertexShader2D: "./src/vertex-shader-2d.glsl",
     vertexShader3D: "./src/vertex-shader-3d.glsl",
     fragmentShaderFFT: "./src/fragment-shader-fft.glsl",
+    fragmentShaderSky: "./src/fragment-shader-sky.glsl",
     fragmentShaderOcean: "./src/fragment-shader-ocean.glsl",
     fragmentShaderNormals: "./src/fragment-shader-normals.glsl",
     fragmentShaderConjugation: "./src/fragment-shader-conjugation.glsl",

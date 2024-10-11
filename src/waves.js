@@ -276,13 +276,13 @@ const Waves = class {
 
     initView () {
         const aspectRatio = (this.gl.canvas.width / this.gl.canvas.height);
-        const x = 0.8;
-        const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.2, 10);
+        const x = 0.1;
+        const projMat = mat.perspectiveProjection(-x / aspectRatio, x / aspectRatio, -x, x, 0.1, 10);
 
         const cameraPos = [
             1.0 * Math.sin(this.view.angZ * Math.PI / 180),
             -1.0 * Math.cos(this.view.angZ * Math.PI / 180),
-            1.0,
+            1.5,
         ];
         const lookAt = mat.lookAt(
             cameraPos,

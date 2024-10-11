@@ -31,7 +31,7 @@ const VIEW_PARAMS = new ParameterGroup({
     },
     "skyColor": {
         type: "color",
-        value: [0.09, 0.33, 0.81],
+        value: [0.60, 0.76, 0.95],
         name: "Sky color",
         transformation: (n) => colorToVec(n),
         inverseTransformation: (n) => vecToColor(n),
@@ -102,7 +102,7 @@ const SIMULATION_PARAMS = new ParameterGroup({
     },
     "scale": {
         type: "range",
-        value: 200,
+        value: 150,
         attributes: { min: 50, max: 1000, step: 50 },
         name: "Scale",
         transformation: (n) => parseInt(n),
@@ -110,7 +110,7 @@ const SIMULATION_PARAMS = new ParameterGroup({
     },
     "wind_x": {
         type: "range",
-        value: 20.0,
+        value: 9.0,
         attributes: { min: 0, max: 50, step: 0.5 },
         name: "Wind X",
         transformation: (n) => parseFloat(n),
@@ -118,7 +118,7 @@ const SIMULATION_PARAMS = new ParameterGroup({
     },
     "wind_y": {
         type: "range",
-        value: 18.0,
+        value: 3.0,
         attributes: { min: 0, max: 50, step: 0.5 },
         name: "Wind Y",
         transformation: (n) => parseFloat(n),

@@ -189,10 +189,12 @@ const ParameterGroup = class {
         this.changed = false;
     }
 
-    update(key, value) {
+    update(key, value, runCallbacks = true) {
         this[key] = value;
-        for (const fn of this.callbacks[key]) {
-            fn(value);
+        if (runCallbacks) {
+            for (const fn of this.callbacks[key]) {
+                fn(value);
+            }
         }
         this.changed = true;
     }

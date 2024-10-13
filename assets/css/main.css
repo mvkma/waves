@@ -15,6 +15,8 @@
     --link-color: #f9a900;
     --text-color: #e6e3e3;
     --bg-color: #150f0e;
+    --src-bg-color: #1d1f21;
+    --src-fg-color: #c5c8c6;
 }
 
 body {
@@ -27,4 +29,32 @@ body {
     padding: 0.5em 0.5em 0.5em 0.5em;
     background: var(--bg-color);
     color: var(--text-color);
+}
+
+.param-row {
+    width: 300px;
+}
+
+.param-row > label {
+    display: inline-block;
+}
+
+.param-row > input {
+    float: right;
+}
+
+input[type=""] {
+    text-align: right;
+    width: 60px;
+    background: var(--src-bg-color);
+    color: var(--src-fg-color);
+}
+
+input[type=""]:focus {
+    border: 1px solid var(--text-color);
+}
+
+input[type="color"] {
+    width: 60px;
+    height: 1em;
 }

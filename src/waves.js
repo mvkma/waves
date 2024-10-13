@@ -445,6 +445,7 @@ window.onload = async function(ev) {
         } else {
             waves.view.update("top", Math.max(0.01, waves.view["top"] + 0.05));
         }
+        ev.preventDefault();
     });
 
 }

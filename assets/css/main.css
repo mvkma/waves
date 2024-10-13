@@ -31,19 +31,27 @@ body {
     color: var(--text-color);
 }
 
+.param-group {
+    padding: 0.3em;
+    width: min-content;
+    border: 1px solid var(--src-fg-color);
+}
+
 .param-row {
-    width: 300px;
+    width: 220px;
+    font-size: 0.9em;
 }
 
 .param-row > label {
     display: inline-block;
+    width: 150px;
 }
 
-.param-row > input {
+.param-row > input, .param-row > select {
     float: right;
 }
 
-input[type=""] {
+input[type=""], select {
     text-align: right;
     width: 60px;
     background: var(--src-bg-color);

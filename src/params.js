@@ -102,12 +102,12 @@ const VIEW_PARAMS = new ParameterGroup({
 
 const SIMULATION_PARAMS = new ParameterGroup({
     "modes": {
-        type: "range",
+        type: "select",
         value: 512,
-        attributes: { min: 4, max: 12, step: 1 },
+        attributes: { options: [16, 32, 64, 128, 256, 512, 1024, 2048] },
         name: "FFT size",
-        transformation: (n) => 2**parseInt(n),
-        inverseTransformation: (n) => Math.log2(n),
+        //transformation: (n) => 2**parseInt(n),
+        //inverseTransformation: (n) => Math.log2(n),
     },
     "scale": {
         type: "",

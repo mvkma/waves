@@ -189,6 +189,10 @@ const ParameterGroup = class {
         this.changed = false;
     }
 
+    step(key, delta) {
+        this.update(key, this[key] + delta);
+    }
+
     update(key, value, runCallbacks = true) {
         this[key] = value;
         if (runCallbacks) {

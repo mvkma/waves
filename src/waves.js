@@ -1,20 +1,7 @@
 /*
  * TODO
- * - Understand the camera
  * - Skybox and sky reflection?
- * - Repeat in x and y direction
  * - Better controls, possibly align with some CSS like
- *     #simulationControls, #viewControls {
- *       display: grid;
- *       grid-template-columns: 1fr;
- *       grid-template-columns: max-content;
- *     }
- *     #simulationControls > div, #viewControls > div {
- *       display: flex;
- *     }
- *     #simulationControls > div > *, #viewControls > div > * {
- *       flex: 1;
- *     }
  * - Fix sccaling of z-coordinates
  * - Better default parameters for light and colors
  * - Add ocean depth as a parameter
@@ -124,10 +111,10 @@ const Waves = class {
         }
 
         this.params = SIMULATION_PARAMS;
-        buildControls("simulationControls", this.params);
+        buildControls("simulation-controls", this.params);
 
         this.view = VIEW_PARAMS;
-        buildControls("viewControls", this.view);
+        buildControls("view-controls", this.view);
 
         const bindings2d = { "a_position": ATTRIBUTE_LOCATIONS["position"] };
         const bindings3d = {
@@ -393,31 +380,41 @@ window.onload = async function(ev) {
     const waves = new Waves(shaderSources);
 
     window.addEventListener("keydown", function (ev) {
-        let angle;
-
         switch (ev.key) {
         case " ":
             waves.togglePaused();
             ev.preventDefault();
             break;
         case "ArrowRight":
-            angle = ev.shiftKey ? "angY" : "angZ";
-            waves.view.update(angle, waves.view[angle] + 1);
+            waves.view.step(ev.shiftKey ? "angY" : "angZ", +1);
             ev.preventDefault();
             break;
         case "ArrowLeft":
-            angle = ev.shiftKey ? "angY" : "angZ";
-            waves.view.update(angle, waves.view[angle] - 1);
+            waves.view.step(ev.shiftKey ? "angY" : "angZ", -1);
             ev.preventDefault();
             break;
         case "ArrowUp":
-            angle = "angX";
-            waves.view.update(angle, waves.view[angle] + 1);
+            if (ev.shiftKey) {
+                waves.view.step("cameraZ", +0.1);
+            } else {
+                waves.view.step("angX", +1);
+            }
             ev.preventDefault();
             break;
         case "ArrowDown":
-            angle = "angX";
-            waves.view.update(angle, waves.view[angle] - 1);
+            if (ev.shiftKey) {
+                waves.view.step("cameraZ", -0.1);
+            } else {
+                waves.view.step("angX", -1);
+            }
+            ev.preventDefault();
+            break;
+        case "+":
+            waves.view.update("top", Math.max(0.01, waves.view["top"] - 0.05));
+            ev.preventDefault();
+            break;
+        case "-":
+            waves.view.update("top", Math.max(0.01, waves.view["top"] + 0.05));
             ev.preventDefault();
             break;
         default:

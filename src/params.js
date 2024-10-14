@@ -50,6 +50,22 @@ const COLOR_PARAMS = new ParameterGroup({
         transformation: (n) => colorToVec(n),
         inverseTransformation: (n) => vecToColor(n),
     },
+    "ambient": {
+        type: "",
+        value: 0.25,
+        attributes: { maxlength: 5, step: 0.05 },
+        name: "Ambient",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n.toString().slice(0, 5),
+    },
+    "specular": {
+        type: "",
+        value: 1.0,
+        attributes: { maxlength: 5, step: 0.05 },
+        name: "Specular",
+        transformation: (n) => parseFloat(n),
+        inverseTransformation: (n) => n.toString().slice(0, 5),
+    },
 });
 
 const VIEW_PARAMS = new ParameterGroup({

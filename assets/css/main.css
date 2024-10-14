@@ -33,6 +33,7 @@ body {
 
 .param-group-container {
     display: flex;
+    width: 960px;
 }
 
 .param-group {
@@ -40,6 +41,15 @@ body {
     padding: 0.3em;
     width: min-content;
     border: 1px solid var(--src-fg-color);
+}
+
+.param-group:first-child {
+    margin-left: 0em;
+}
+
+.param-group:last-child {
+    margin-right: 0em;
+    flex: 1;
 }
 
 .param-row {
@@ -70,4 +80,11 @@ input[type=""]:focus {
 input[type="color"] {
     width: 60px;
     height: 1em;
+}
+
+button {
+    width: 100%;
+    padding: 0.1em;
+    margin: 0em;
+    font-size: 0.9em;
 }

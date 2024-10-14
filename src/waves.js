@@ -146,6 +146,7 @@ const Waves = class {
         this.numIndices = 0;
         this.indexType = 0;
         this.paused = true;
+        this.frozen = false;
 
         initializeCubeMap(this.gl, CUBE_TEXTURE_UNIT, CUBE_FACES);
 
@@ -288,6 +289,8 @@ const Waves = class {
             "u_scales": [this.params.scale, this.params.scale],
             "u_n1": 1.0,
             "u_n2": 1.34,
+            "u_ambient": this.colors.ambient,
+            "u_specular": this.colors.specular,
             "u_lightdir": [1.5, 0.0, 1.0],
             "u_camerapos": cameraPos,
             "u_skycolor": this.colors.skyColor,
@@ -365,10 +368,32 @@ const Waves = class {
         });
         this.gl.drawElements(this.gl.TRIANGLES, this.numIndices, this.indexType, 0);
 
-        this.t += 0.1;
+        if (!this.frozen) {
+            this.t += 0.1;
+        }
         if (!this.paused) {
             window.setTimeout(() => window.requestAnimationFrame(() => this.render()), this.view.interval);
         }
+    }
+
+    screenshot () {
+        const a = document.createElement("a");
+        document.body.appendChild(a);
+        a.style.display = "none";
+
+        const filename = `waves-${(new Date()).toISOString()}.png`;
+        const wasPaused = this.paused;
+
+        this.paused = true;
+        this.render();
+        this.gl.canvas.toBlob(function (blob) {
+            const url = window.URL.createObjectURL(blob);
+            a.href = url;
+            a.download = filename;
+            a.click();
+        });
+        this.paused = wasPaused;
+        document.body.removeChild(a);
     }
 
     togglePaused () {
@@ -422,6 +447,10 @@ window.onload = async function(ev) {
             waves.view.update("top", Math.max(0.01, waves.view["top"] + 0.05));
             ev.preventDefault();
             break;
+        case "f":
+            waves.frozen = !waves.frozen;
+            ev.preventDefault();
+            break;
         default:
             break;
         }
@@ -448,6 +477,18 @@ window.onload = async function(ev) {
             waves.view.update("top", Math.max(0.01, waves.view["top"] + 0.05));
         }
         ev.preventDefault();
+    });
+
+    document.querySelector("#play-button").addEventListener("click", function (ev) {
+        waves.togglePaused();
+    });
+
+    document.querySelector("#freeze-button").addEventListener("click", function (ev) {
+        waves.frozen = !waves.frozen;
+    });
+
+    document.querySelector("#screenshot-button").addEventListener("click", function (ev) {
+        waves.screenshot();
     });
 
 }

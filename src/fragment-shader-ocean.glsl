@@ -7,6 +7,8 @@ uniform highp sampler2D u_normals;
 
 uniform float u_n1;
 uniform float u_n2;
+uniform float u_ambient;
+uniform float u_specular;
 uniform vec3 u_lightdir;
 uniform vec3 u_camerapos;
 uniform vec3 u_skycolor;
@@ -56,11 +58,10 @@ void main() {
                          0.1 * max(dot(normal, normalize(u_lightdir)), 0.0) * u_suncolor);
 
   // Ambient parts
-  color += 0.5 * 0.5 * u_watercolor;
+  color += u_ambient * u_watercolor;
 
   // Specular part
-  // TODO: should probably be tuned down a little bit
-  color += u_suncolor * u_suncolor * pow(max(dot(normal, normalize(normalize(u_lightdir) - normalize(view))), 0.0), 512.0);
+  color += u_specular * u_suncolor * u_suncolor * pow(max(dot(normal, normalize(normalize(u_lightdir) - normalize(view))), 0.0), 512.0);
 
   // Fresnel
   color = mix(color, 0.5 * u_skycolor, refl);

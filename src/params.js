@@ -21,7 +21,7 @@ const SHADER_SOURCES = {
     fragmentShaderDebug: "./src/fragment-shader-debug.glsl",
 };
 
-const VIEW_PARAMS = new ParameterGroup({
+const COLOR_PARAMS = new ParameterGroup({
     "skyColor": {
         type: "color",
         value: [0.60, 0.76, 0.95],
@@ -50,6 +50,9 @@ const VIEW_PARAMS = new ParameterGroup({
         transformation: (n) => colorToVec(n),
         inverseTransformation: (n) => vecToColor(n),
     },
+});
+
+const VIEW_PARAMS = new ParameterGroup({
     "angX": {
         type: "",
         value: 0.0,
@@ -156,5 +159,6 @@ export {
     FLOAT_SIZE,
     SHADER_SOURCES,
     VIEW_PARAMS,
-    SIMULATION_PARAMS
+    COLOR_PARAMS,
+    SIMULATION_PARAMS,
 };

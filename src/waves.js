@@ -27,6 +27,7 @@ import {
     SHADER_SOURCES,
     VIEW_PARAMS,
     SIMULATION_PARAMS,
+    COLOR_PARAMS,
 } from "./params.js";
 
 const TEXTURE_UNITS = {
@@ -115,6 +116,9 @@ const Waves = class {
 
         this.view = VIEW_PARAMS;
         buildControls("view-controls", this.view);
+
+        this.colors = COLOR_PARAMS;
+        buildControls("color-controls", this.colors);
 
         const bindings2d = { "a_position": ATTRIBUTE_LOCATIONS["position"] };
         const bindings3d = {
@@ -286,10 +290,10 @@ const Waves = class {
             "u_n2": 1.34,
             "u_lightdir": [1.5, 0.0, 1.0],
             "u_camerapos": cameraPos,
-            "u_skycolor": this.view.skyColor,
-            "u_suncolor": this.view.sunColor,
-            "u_watercolor": this.view.waterColor,
-            "u_aircolor": this.view.airColor,
+            "u_skycolor": this.colors.skyColor,
+            "u_suncolor": this.colors.sunColor,
+            "u_watercolor": this.colors.waterColor,
+            "u_aircolor": this.colors.airColor,
             // "u_cubemap": 2,
         });
         this.gl.uniformMatrix4fv(this.programs.ocean.uniforms["u_projection"][0], false, projMat);
@@ -297,14 +301,15 @@ const Waves = class {
 
         this.gl.useProgram(this.programs.sky.prog);
         this.programs.sky.setUniforms(this.gl, {
-            "u_skycolor": this.view.skyColor,
+            "u_skycolor": this.colors.skyColor,
         });
         // this.gl.uniformMatrix4fv(this.programs.sky.uniforms["u_projection"][0], false, projMat);
         // this.gl.uniformMatrix4fv(this.programs.sky.uniforms["u_view"][0], false, viewMat);
 
-        this.gl.clearColor(...this.view.skyColor, 1.0);
+        this.gl.clearColor(...this.colors.skyColor, 1.0);
 
         this.view.changed = false;
+        this.colors.changed = false;
     }
 
     render () {
@@ -332,7 +337,7 @@ const Waves = class {
         this.useFramebuffer("outputA", this.params.modes, this.params.modes);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
-        if (this.view.changed) {
+        if (this.view.changed || this.colors.changed) {
             this.initView();
         }
 
@@ -424,7 +429,7 @@ window.onload = async function(ev) {
 
     const canvas = document.querySelector("canvas");
 
-    canvas.addEventListener("mousemove", function (ev) {
+    canvas.addEventListener("pointermove", function (ev) {
         if (ev.buttons == 0) {
             return;
         }

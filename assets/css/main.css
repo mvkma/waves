@@ -31,7 +31,12 @@ body {
     color: var(--text-color);
 }
 
+.param-group-container {
+    display: flex;
+}
+
 .param-group {
+    margin: 0.5em;
     padding: 0.3em;
     width: min-content;
     border: 1px solid var(--src-fg-color);

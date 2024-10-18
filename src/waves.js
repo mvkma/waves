@@ -93,6 +93,16 @@ function fft(gl, prog, bufferA, bufferB, params) {
     }
 }
 
+/**
+ * @param {object} counter 
+ **/
+function fpsCount(counter) {
+    counter.t1 = performance.now();
+    counter.delta[counter.frame] = counter.t1 - counter.t0;
+    counter.frame = (counter.frame + 1) % 60;
+    counter.t0 = counter.t1;
+}
+
 const Waves = class {
     constructor (shaders) {
         this.gl = document.querySelector("canvas").getContext("webgl2");
@@ -110,6 +120,12 @@ const Waves = class {
 
         this.colors = COLOR_PARAMS;
         buildControls("color-controls", this.colors);
+
+        this.gauges = {
+            fps: document.querySelector("#fps"),
+            dx: document.querySelector("#dx"),
+            w2g: document.querySelector("#w2g"),
+        };
 
         const bindings2d = { "a_position": ATTRIBUTE_LOCATIONS["position"] };
         const bindings3d = {
@@ -138,6 +154,12 @@ const Waves = class {
         this.indexType = 0;
         this.paused = true;
         this.frozen = false;
+        this.fpsCounter = {
+            t0: performance.now(),
+            t1: performance.now(),
+            delta: Array.from({ length: 60 }, () => 0),
+            frame: 0,
+        };
 
         initializeCubeMap(this.gl, CUBE_TEXTURE_UNIT, CUBE_FACES);
 
@@ -153,9 +175,8 @@ const Waves = class {
 
     initSimulation () {
         const omegaMag = this.params.windX * this.params.windX + this.params.windY * this.params.windY;
-        console.log(`dx = ${this.params.scale / this.params.modes}`);
-        console.log(`omegaMag / g = ${omegaMag / G}`);
-        console.log(`(omegaMag / g) / dy = ${omegaMag / G / (this.params.scale / this.params.modes)}`);
+        this.gauges.dx.textContent = (this.params.scale / this.params.modes).toFixed(2);
+        this.gauges.w2g.textContent = (omegaMag / G).toFixed(2);
 
         const numSamples = this.params.modes / 2;
         const repeat = 3;
@@ -358,6 +379,11 @@ const Waves = class {
             "u_normals": TEXTURE_UNITS.outputA,
         });
         this.gl.drawElements(this.gl.TRIANGLES, this.numIndices, this.indexType, 0);
+
+        fpsCount(this.fpsCounter);
+        if (!(this.fpsCounter.frame % 60)) {
+            this.gauges.fps.textContent = (1 / this.fpsCounter.delta.reduce((a, b) => a + b, 0) * 60 * 1000).toFixed(2);
+        }
 
         if (!this.frozen) {
             this.t += 0.1;

@@ -120,7 +120,7 @@ const VIEW_PARAMS = new ParameterGroup({
     },
     "interval": {
         type: "",
-        value: 100,
+        value: 30,
         attributes: { maxlength: 5, step: 10 },
         name: "Interval (ms)",
         transformation: (n) => parseFloat(n),

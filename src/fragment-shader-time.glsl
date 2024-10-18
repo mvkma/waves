@@ -35,7 +35,7 @@ void main() {
   k.y = gl_FragCoord.y < 0.5 * u_modes.y ? gl_FragCoord.y - 0.5 : gl_FragCoord.y - 0.5 - u_modes.y;
   k *= PI * 2.0 / u_scales;
 
-  omegat = sqrt(G * length(k)) * u_t;
+  omegat = sqrt(G * length(k)) * u_t * 0.3;
   phase = vec2(cos(omegat), sin(omegat));
 
   ix_kp = gl_FragCoord.xy - 0.5;

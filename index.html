@@ -6,11 +6,11 @@
   </head>
   <body>
     <canvas id="canvas" width="960" height="640"></canvas>
-    <div class="param-group-container">
-      <div class="param-group" id="simulation-controls"></div>
-      <div class="param-group" id="view-controls"></div>
-      <div class="param-group" id="color-controls"></div>
-      <div class="param-group" id="control-buttons">
+    <div class="column-group-container">
+      <div class="column-group" id="simulation-controls"></div>
+      <div class="column-group" id="view-controls"></div>
+      <div class="column-group" id="color-controls"></div>
+      <div class="column-group" id="control-buttons">
         <div class="">
           <button id="play-button">Play / Pause</button>
         </div>
@@ -19,6 +19,28 @@
         </div>
         <div class="">
           <button id="screenshot-button">Screenshot</button>
+        </div>
+      </div>
+    </div>
+    <div class="column-group-container">
+      <div class="column-group">
+        <div class="row">
+          <a href="#">preset 1</a>
+          |
+          <a href="#">preset 2</a>
+          |
+          <a href="#">preset 2</a>
+        </div>
+      </div>
+    </div>
+    <div class="column-group-container">
+      <div class="column-group">
+        <div class="row">
+          <spap>fps: <span id="fps">--</span></span>
+          |
+          <span>dx: <span id="dx">--</span></span>
+          |
+          <span>w^2 / g: <span id="w2g">--</span></span>
         </div>
       </div>
     </div>

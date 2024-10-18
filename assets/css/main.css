@@ -31,30 +31,34 @@ body {
     color: var(--text-color);
 }
 
-.param-group-container {
+.column-group-container {
     display: flex;
     width: 960px;
 }
 
-.param-group {
+.column-group {
+    font-size: 0.9em;
     margin: 0.5em;
     padding: 0.3em;
     width: min-content;
     border: 1px solid var(--src-fg-color);
 }
 
-.param-group:first-child {
+.column-group:first-child {
     margin-left: 0em;
 }
 
-.param-group:last-child {
+.column-group:last-child {
     margin-right: 0em;
     flex: 1;
 }
 
+.row {
+    text-align: center;
+}
+
 .param-row {
     width: 220px;
-    font-size: 0.9em;
 }
 
 .param-row > label {
@@ -86,5 +90,8 @@ button {
     width: 100%;
     padding: 0.1em;
     margin: 0em;
-    font-size: 0.9em;
+}
+
+a {
+    color: var(--link-color);
 }

@@ -28,6 +28,7 @@ import {
     VIEW_PARAMS,
     SIMULATION_PARAMS,
     COLOR_PARAMS,
+    CUBE_FACES,
 } from "./params.js";
 
 const TEXTURE_UNITS = {
@@ -55,15 +56,6 @@ const ATTRIBUTE_LOCATIONS = {
 
 const CUBE_TEXTURE_UNIT = 2;
 
-const CUBE_FACES = [
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_X, url: "sky-horizontal.jpg", size: 512 },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Y, url: "sky-horizontal.jpg", size: 512 },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Z, url: "sky-horizontal.jpg", size: 512 },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_X, url: "sky-horizontal.jpg", size: 512 },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Y, url: "sky-horizontal.jpg", size: 512 },
-    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Z, url: "sky-horizontal.jpg", size: 512 },
-];
-
 /**
  * @param {WebGLRenderingContext} gl
  * @param {Program} prog
@@ -75,7 +67,6 @@ const CUBE_FACES = [
  */
 function fftStep(gl, prog, inputTextureUnit, outputBuffer, size, subSize, horizontal) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, outputBuffer);
-    // TODO: this might be wrong
     gl.viewport(0, 0, size, size);
     prog.setUniforms(gl, {"u_input": inputTextureUnit, "u_subsize": subSize, "u_horizontal": horizontal});
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -161,7 +152,7 @@ const Waves = class {
     }
 
     initSimulation () {
-        const omegaMag = this.params.wind_x * this.params.wind_x + this.params.wind_y * this.params.wind_y;
+        const omegaMag = this.params.windX * this.params.windX + this.params.windY * this.params.windY;
         console.log(`dx = ${this.params.scale / this.params.modes}`);
         console.log(`omegaMag / g = ${omegaMag / G}`);
         console.log(`(omegaMag / g) / dy = ${omegaMag / G / (this.params.scale / this.params.modes)}`);
@@ -248,7 +239,7 @@ const Waves = class {
         this.programs.init.setUniforms(this.gl, {
             "u_modes": [this.params.modes, this.params.modes],
             "u_scales": [this.params.scale, this.params.scale],
-            "u_omega": [this.params.wind_x, this.params.wind_y],
+            "u_omega": [this.params.windX, this.params.windY],
             "u_seed": [Math.random(), Math.random()],
             "u_cutoff": this.params.cutoff,
             "u_amp": 1 / this.params.modes / 50, // TODO

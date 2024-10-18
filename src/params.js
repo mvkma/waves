@@ -21,6 +21,15 @@ const SHADER_SOURCES = {
     fragmentShaderDebug: "./src/fragment-shader-debug.glsl",
 };
 
+const CUBE_FACES = [
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_X, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Y, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_POSITIVE_Z, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_X, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Y, url: "sky-horizontal.jpg", size: 512 },
+    { target: WebGL2RenderingContext.TEXTURE_CUBE_MAP_NEGATIVE_Z, url: "sky-horizontal.jpg", size: 512 },
+];
+
 const COLOR_PARAMS = new ParameterGroup({
     "skyColor": {
         type: "color",
@@ -45,7 +54,7 @@ const COLOR_PARAMS = new ParameterGroup({
     },
     "airColor": {
         type: "color",
-        value: [0.01, 0.08, 0.13], // colorToVec("#202066"),
+        value: [0.01, 0.08, 0.13],
         name: "Air color",
         transformation: (n) => colorToVec(n),
         inverseTransformation: (n) => vecToColor(n),
@@ -71,7 +80,7 @@ const COLOR_PARAMS = new ParameterGroup({
 const VIEW_PARAMS = new ParameterGroup({
     "angX": {
         type: "",
-        value: 0.0,
+        value: 40.0,
         attributes: { maxlength: 5, step: 1.0 },
         name: "Angle X (deg)",
         transformation: (n) => parseFloat(n),
@@ -87,7 +96,7 @@ const VIEW_PARAMS = new ParameterGroup({
     },
     "angZ": {
         type: "",
-        value: -65.0,
+        value: 60.0,
         attributes: { maxlength: 5, step: 1.0 },
         name: "Angle Z (deg)",
         transformation: (n) => parseFloat(n),
@@ -125,8 +134,6 @@ const SIMULATION_PARAMS = new ParameterGroup({
         value: 512,
         attributes: { options: [16, 32, 64, 128, 256, 512, 1024, 2048] },
         name: "FFT size",
-        //transformation: (n) => 2**parseInt(n),
-        //inverseTransformation: (n) => Math.log2(n),
     },
     "scale": {
         type: "",
@@ -136,17 +143,17 @@ const SIMULATION_PARAMS = new ParameterGroup({
         transformation: (n) => parseInt(n),
         inverseTransformation: (n) => n.toString().slice(0, 5),
     },
-    "wind_x": {
+    "windX": {
         type: "",
-        value: 9.0,
+        value: 11.0,
         attributes: { maxlength: 5, step: 1.0 },
         name: "Wind X",
         transformation: (n) => parseFloat(n),
         inverseTransformation: (n) => n.toString().slice(0, 5),
     },
-    "wind_y": {
+    "windY": {
         type: "",
-        value: 3.0,
+        value: 5.0,
         attributes: { maxlength: 5, step: 1.0 },
         name: "Wind Y",
         transformation: (n) => parseFloat(n),
@@ -177,4 +184,5 @@ export {
     VIEW_PARAMS,
     COLOR_PARAMS,
     SIMULATION_PARAMS,
+    CUBE_FACES,
 };

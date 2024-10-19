@@ -11,6 +11,7 @@ function buildInputElement(parent, key, param, parameterGroup) {
 
     const input = document.createElement("input");
     input.type = param.type;
+    input.id = key;
     if (param.attributes) {
         Object.keys(param.attributes).forEach(k => input.setAttribute(k, param.attributes[k]));
     }
@@ -67,6 +68,7 @@ function buildSelectElement(parent, key, param, parameterGroup) {
     label.textContent = param.name + ":";
 
     const select = document.createElement("select");
+    select.id = key;
     const options = param.attributes.options;
     let option;
     options.forEach(function (value) {

@@ -31,6 +31,10 @@ import {
     CUBE_FACES,
 } from "./params.js";
 
+import {
+    PRESETS
+} from "./presets.js";
+
 const TEXTURE_UNITS = {
     outputA: 3,
     outputB: 4,
@@ -166,6 +170,23 @@ const Waves = class {
         this.initSimulation();
         this.initView();
         window.requestAnimationFrame(() => this.render());
+    }
+
+    applyPreset(preset) {
+        const wasPaused = this.paused;
+        this.paused = true;
+        for (const [group, params] of Object.entries(preset)) {
+            if (!this.hasOwnProperty(group)) {
+                continue;
+            }
+            for (const [key, value] of Object.entries(params)) {
+                if (!this[group].hasOwnProperty(key)) {
+                    continue;
+                }
+                this[group].update(key, value);
+            }
+        }
+        this.paused = wasPaused;
     }
 
     useFramebuffer(fb, width, height) {
@@ -508,4 +529,10 @@ window.onload = async function(ev) {
         waves.screenshot();
     });
 
+    document.querySelectorAll(".preset-link").forEach(function (a) {
+        const ix = a.id;
+        a.addEventListener("click", function (ev) {
+            waves.applyPreset(PRESETS[ix]);
+        });
+    });
 }

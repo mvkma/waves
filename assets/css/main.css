@@ -29,6 +29,7 @@ body {
     padding: 0.5em 0.5em 0.5em 0.5em;
     background: var(--bg-color);
     color: var(--text-color);
+    width: 960px;
 }
 
 .column-group-container {
@@ -42,6 +43,7 @@ body {
     padding: 0.3em;
     width: min-content;
     border: 1px solid var(--src-fg-color);
+    flex: 1;
 }
 
 .column-group:first-child {
@@ -50,20 +52,14 @@ body {
 
 .column-group:last-child {
     margin-right: 0em;
-    flex: 1;
 }
 
 .row {
     text-align: center;
 }
 
-.param-row {
-    width: 220px;
-}
-
 .param-row > label {
     display: inline-block;
-    width: 150px;
 }
 
 .param-row > input, .param-row > select {
@@ -94,4 +90,23 @@ button {
 
 a {
     color: var(--link-color);
+}
+
+dl {
+    display: grid;
+    grid-template-columns: max-content auto;
+}
+
+dt {
+    grid-column-start: 1;
+}
+
+dd:before {
+    content: "-";
+    margin-right: 1em;
+}
+
+dd {
+    margin-left: 1em;
+    grid-column-start: 2;
 }

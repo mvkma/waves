@@ -32,8 +32,8 @@ body {
     width: 960px;
 }
 
-canvas {
-    border: 1px solid var(--src-fg-color);
+.text-right {
+    float: right;
 }
 
 .column-group-container {
@@ -44,7 +44,7 @@ canvas {
 .column-group {
     font-size: 0.9em;
     margin: 0.5em;
-    padding: 0.3em;
+    padding: 0.3em 0.5em;
     width: min-content;
     border: 1px solid var(--src-fg-color);
     flex: 1;

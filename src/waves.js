@@ -1,12 +1,3 @@
-/*
- * TODO
- * - Skybox and sky reflection?
- * - Better controls, possibly align with some CSS like
- * - Fix sccaling of z-coordinates
- * - Better default parameters for light and colors
- * - Add ocean depth as a parameter
- */
-
 import {
     Program,
     createTexture,

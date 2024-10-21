@@ -32,6 +32,10 @@ body {
     width: 960px;
 }
 
+canvas {
+    border: 1px solid var(--src-fg-color);
+}
+
 .column-group-container {
     display: flex;
     width: 960px;

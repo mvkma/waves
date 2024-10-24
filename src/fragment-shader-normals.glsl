@@ -16,10 +16,6 @@ vec3 vl;
 vec3 vb;
 vec3 vt;
 
-vec2 mul_complex(vec2 a, vec2 b) {
-  return vec2(a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]);
-}
-
 vec3 get_displacement(vec2 pos) {
   return texture2D(u_displacements, pos).zwx;
 }

@@ -30,13 +30,10 @@ vec3 view;
 
 // Light contributions according to https://www.shadertoy.com/view/tdSfWG
 // - Reflected sky color (according to Fresnel)
-//
 // - Specular reflection of the sun
-//
 // - Diffuse parts:
-//   - some small reflection of sun color?
-//   - some small reflection of sky color?
-//
+//   - some small reflection of sun color
+//   - some small reflection of sky color
 // - Ambient parts:
 //   - Water color
 

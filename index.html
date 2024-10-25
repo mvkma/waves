@@ -1,17 +1,27 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" type="text/css" href="assets/css/main.css"/>
     <title>Waves</title>
+    <meta name="description" content="Wave simulation" />
   </head>
   <body>
+    <div class="column-group-container" id="mobile-warning">
+      <div class="column-group">
+        <p><strong>Warning:</strong> It looks like you are on a mobile device. The simulation might not work.</p>
+      </div>
+    </div>
     <div class="column-group-container">
       <div class="column-group">
         <span class="text-left">waves - press space to start</span>
         <span class="text-right">
           <a href="https://relint.de/waves.html" target="_blank">more info</a>
           |
-          <a href="https://github.com/mvkma/waves" target="_blank">code</a>
+          <a href="https://github.com/mvkma/waves" target="_blank">code (github)</a>
+          |
+          <a href="https://git.sr.ht/~mvkma/waves" target="_blank">code (sourcehut)</a>
         </span>
       </div>
     </div>
@@ -74,6 +84,11 @@
         <dl>
       </div>
       <div class="column-group">
+        <p>Ocean wave simulation in WebGL.</p>
+        <p>A parameter can be changed with the arrow keys if the corresponding input field has focus.</p>
+        <p>Click one of the preset links to load a preset.</p>
+        <p>In the frozen state you can continue to look around but time evolution is stopped.</p>
+        <p>More information is available <a href="https://relint.de/waves.html" target="_blank">here</a>.</p>
       </div>
     </div>
     <script type="module" src="src/waves.js"></script>

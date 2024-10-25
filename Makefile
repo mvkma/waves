@@ -1,4 +1,4 @@
-BUILDDIR = public
+BUILDDIR = waves.relint.de
 INDEX = index.html
 SRCS = src assets
 

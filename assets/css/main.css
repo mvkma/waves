@@ -12,11 +12,21 @@
 }
 
 :root {
-    --link-color: #f9a900;
+    --link-color: #44aaff;
     --text-color: #e6e3e3;
     --bg-color: #150f0e;
     --src-bg-color: #1d1f21;
     --src-fg-color: #c5c8c6;
+}
+
+#mobile-warning {
+    display: none;
+}
+
+@media (any-pointer: coarse) {
+    #mobile-warning {
+        display: flex;
+    }
 }
 
 body {
@@ -113,4 +123,8 @@ dd:before {
 dd {
     margin-left: 1em;
     grid-column-start: 2;
+}
+
+strong {
+    font-weight: 800;
 }
